@@ -1,0 +1,118 @@
+version: '3'
+
+vars:
+  BINARY_NAME: nib
+  BUILD_DIR: build
+
+tasks:
+  default:
+    desc: Build the project
+    cmds:
+      - task: build
+
+  build:
+    desc: Build nib and agent binaries
+    vars:
+      VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+      COMMIT:
+        sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+      DATE:
+        sh: date -u +%Y-%m-%d
+      LDFLAGS: >-
+        -X github.com/poiesic/nib/internal/version.Version={{.VERSION}}
+        -X github.com/poiesic/nib/internal/version.Commit={{.COMMIT}}
+        -X github.com/poiesic/nib/internal/version.Date={{.DATE}}
+    cmds:
+      - go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/nib
+      - go build -o {{.BUILD_DIR}}/nib-agent-claude ./cmd/nib-agent-claude
+      - go build -o {{.BUILD_DIR}}/nib-agent-local ./cmd/nib-agent-local
+    sources:
+      - cmd/**/*.go
+      - internal/**/*.go
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
+      - '{{.BUILD_DIR}}/nib-agent-claude'
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v ./...
+
+  test:short:
+    desc: Run tests without verbose output
+    cmds:
+      - go test ./...
+
+  test:cover:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -coverprofile={{.BUILD_DIR}}/coverage.out ./...
+      - go tool cover -html={{.BUILD_DIR}}/coverage.out -o {{.BUILD_DIR}}/coverage.html
+    generates:
+      - '{{.BUILD_DIR}}/coverage.out'
+      - '{{.BUILD_DIR}}/coverage.html'
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  mod:tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  all:
+    desc: Run fmt, vet, test, and build
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test:short
+      - task: build
+
+  release:
+    desc: "Tag, cross-compile, and create a GitHub release (usage: task release VERSION=v1.0.0)"
+    requires:
+      vars: [VERSION]
+    vars:
+      COMMIT:
+        sh: git rev-parse --short HEAD
+      DATE:
+        sh: date -u +%Y-%m-%d
+      LDFLAGS: >-
+        -X github.com/poiesic/nib/internal/version.Version={{.VERSION}}
+        -X github.com/poiesic/nib/internal/version.Commit={{.COMMIT}}
+        -X github.com/poiesic/nib/internal/version.Date={{.DATE}}
+    cmds:
+      - git tag {{.VERSION}}
+      - git push origin {{.VERSION}}
+      - GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/nib-darwin-arm64 ./cmd/nib
+      - GOOS=linux GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/nib-linux-arm64 ./cmd/nib
+      - GOOS=linux GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/nib-linux-amd64 ./cmd/nib
+      - GOOS=windows GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BUILD_DIR}}/nib-windows-amd64.exe ./cmd/nib
+      - >-
+        gh release create {{.VERSION}}
+        {{.BUILD_DIR}}/nib-darwin-arm64
+        {{.BUILD_DIR}}/nib-linux-arm64
+        {{.BUILD_DIR}}/nib-linux-amd64
+        {{.BUILD_DIR}}/nib-windows-amd64.exe
+        --title "{{.VERSION}}"
+        --generate-notes

@@ -1,0 +1,109 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+{{.ProjectName}} is a novel manuscript. The project uses Markdown for source files and Pandoc for multi-format document generation. Project assembly and builds are managed by `nib`.
+
+## Project Structure
+
+- **scenes/** - Scene files (Markdown)
+- **characters/** - Character profiles
+- **storydb/** - World-building notes, setting details, timeline
+- **appendices/** - Development notes and reference material
+- **assets/** - Images and other media
+- **build/** - Generated output (DOCX, PDF, EPUB, MD)
+- **book.yaml** - Book metadata (title, author, contact, scene sequencing)
+- **STYLE.md** - Writing style guide
+- **TOOLS.md** - Scrib command reference
+- **TROPES.md** - AI writing tropes to avoid
+
+## Tools
+
+**Read TOOLS.md before doing any work.** It documents `nib` commands you MUST use instead of manual alternatives. Key rules:
+
+- **NEVER grep or search scene files to find which scenes a character appears in.** Use `nib ct chapters <character>` instead.
+- **NEVER manually scan scenes to list characters.** Use `nib ct characters [range]` instead.
+- **NEVER assemble manuscript content by hand.** Use `nib manuscript build` instead.
+- When you need context about what happened in earlier chapters, use `nib ct recap <range>`.
+- When you need to know if scenes have been indexed, use `nib ct index` to index them first.
+
+If a `nib` command exists for what you're about to do, use it. Do not reinvent it with grep, find, or file reads.
+
+## Writing Rules
+
+Core Principle: Write naturally, as a skilled human author would. Avoid all AI-typical patterns. See **TROPES.md** for a comprehensive catalog of AI writing tropes to avoid.
+
+### FORMATTING:
+- Use `--` (double hyphen) for em dashes in manuscript files, not Unicode em dashes (---). Pandoc converts these during build.
+- Use ASCII straight quotes `"`, not Unicode smart quotes.
+
+### STRUCTURAL HABITS TO BREAK:
+- Don't begin chapters with exposition.
+- Avoid telling the reader.
+- Don't start consecutive paragraphs with transition words
+- Avoid three-part lists unless specifically needed
+- Don't follow rigid patterns (claim -> explanation -> example)
+- Skip headers/sections unless content genuinely needs structure
+
+### TONE REQUIREMENTS:
+- No corporate-speak or marketing language
+- No excessive enthusiasm (multiple exclamation points)
+- No hedge-stacking ("it seems that it might perhaps be")
+- State things directly: "This is X" not "This can be considered to be X"
+
+### DO THESE INSTEAD:
+
+Vary Your Rhythm:
+- Mix short and long sentences
+- Start sentences differently
+- Use fragments. Like this. But only a few times per chapter.
+- Let punctuation create natural pauses
+
+Write With Confidence:
+- Start chapters with action.
+- Show the reader actions, reactions, and emotions.
+- Say "doesn't work" not "may not work optimally"
+- Be direct unless uncertainty is the point
+- Have a perspective, not just neutral information delivery
+
+Show Personality:
+- Use natural metaphors, not forced ones
+- Include relevant observations
+- Match formality to context
+- Trust your reader's intelligence
+
+Specific Over Generic:
+- Use concrete details and examples
+- Choose precise verbs over verb + adverb
+- Name things specifically rather than categorizing
+
+### THE TEST:
+Would a human writer--someone skilled at their craft--actually write this sentence? If it sounds like an AI trying to sound human, it needs rewriting.
+
+### EDITORIAL HONESTY:
+
+**Stance:**
+- Be direct and honest when reviewing or discussing the manuscript. No sugar-coating, no softening bad news, no diplomatic hedging.
+- If something doesn't work, say so plainly and explain why.
+- Treat the author as a peer who wants real feedback, not a student who needs reassurance.
+- The goal is to make this book the best possible version of itself. That requires honest dialogue, not encouragement.
+
+**Structural requirements to enforce honesty:**
+- When assessing any element (chapter, character, scene, arc), rate it on a 1-5 scale. Do not rate everything 3 or above.
+- When asked for overall feedback, identify the three weakest elements of the manuscript before discussing strengths.
+- When comparing elements (chapters, characters, scenes), explicitly rank them and justify the ranking.
+- When the overall assessment is positive, explain specifically what would need to be true for the assessment to be negative, so the author can evaluate whether those conditions actually hold.
+- When a choice is defensible, still articulate what the manuscript is sacrificing by making that choice.
+
+**Banned patterns:**
+- No "this is strong but could be even stronger" -- say what's actually wrong.
+- No "you might consider" or "perhaps explore" -- make a direct recommendation or identify a specific problem.
+- No "while this works well..." followed by the real critique -- lead with the critique.
+- No praising effort, ambition, or intent as a cushion before criticism.
+- No listing five strengths for every one weakness. If the weaknesses outweigh the strengths, the response should reflect that ratio.
+
+**When uncertain:**
+- If you lack confidence in an assessment, say so and explain why rather than defaulting to positive.
+- "I'm not sure this works but I can't articulate why" is more useful than manufactured praise.

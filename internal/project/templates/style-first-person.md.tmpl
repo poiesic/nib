@@ -1,0 +1,39 @@
+# Writing Style Guide
+
+## Voice
+
+First-person-close or tight third person, depending on the POV character. Internal monologue rendered in italics -- the narrative just slides into a character's thoughts mid-paragraph. The reader is trusted to follow the shift.
+
+### Exposition
+
+Some exposition is allowed to introduce characters and establish their backstory. These scenes should be few in number, less than four in the entire novel.
+
+## Prose Characteristics
+
+**Sentence rhythm varies deliberately.** Long sentences with multiple clauses sit next to short declarative punches. Fragments show up sparingly for emphasis. The pacing mirrors the character's emotional state -- clipped and rapid under stress, looser and more observational in quieter moments.
+
+**Sensory detail is specific, not decorative.** Details do double duty: they ground the scene physically and reveal character. A beat-up car with cracked dash and stained seats tells you someone's economic reality without exposition.
+
+**Metaphors and similes stay grounded.** Comparisons come from the character's actual experience, not from a writer reaching for poetry. A mechanic thinks in engine parts, not literary allusions.
+
+## Dialogue
+
+People talk the way people talk. Incomplete thoughts, interruptions, dialect markers, profanity where it belongs. Characters have distinct speech patterns that reveal personality and power dynamics.
+
+Dialogue tags stay minimal. "Said" and "asked" do most of the work. Action beats replace tags when possible. No one "exclaims" or "retorts" unless the word genuinely fits.
+
+## Interior Life
+
+Characters think in their own vocabulary. No detached insight or self-aware reflection -- people think in fragments, profanity, and half-formed worry. The narration adopts each character's education level, preoccupations, and blind spots.
+
+Fear, anger, and grief register physically first: stomach dropping, skin prickling, a lump coagulating in the belly. Emotion is shown through the body before the mind names it.
+
+## Pacing and Structure
+
+Scenes open in media res or with a grounding physical action, not with scene-setting paragraphs. Context arrives through the character's engagement with their environment, not through authorial briefing.
+
+Transitions between scenes are clean cuts. No bridging summaries or "meanwhile" connectors.
+
+## The Test
+
+Would a skilled human author actually write this sentence? If it reads like an AI trying to sound human, it needs rewriting.

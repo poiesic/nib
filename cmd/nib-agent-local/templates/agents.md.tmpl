@@ -1,0 +1,32 @@
+# {{.ProjectName}}
+
+## Project Structure
+
+- `book.yaml` — chapter and scene ordering
+- `scenes/` — markdown scene files
+- `characters/` — character profile YAML files
+- `storydb/` — indexed continuity data (CSV)
+- `STYLE.md` — writing style guide
+- `TROPES.md` — AI writing tropes to avoid
+
+## Tools
+
+Use `nib` commands to interact with the manuscript:
+
+| Command | Description |
+|---------|-------------|
+| `nib ma toc` | Table of contents with dotted notation |
+| `nib ma status` | Word count, chapters, scenes |
+| `nib ct recap <range>` | JSON recap of chapters |
+| `nib ct recap <range> --detailed` | Include facts, locations, dates |
+| `nib ct recap <range> -c <slug>` | Filter to character |
+| `nib ct characters` | List indexed characters |
+| `nib ct chapters <char> [char...]` | Scenes where characters appear |
+
+## Rules
+
+- Read STYLE.md before writing or editing prose
+- Read TROPES.md to know what patterns to avoid
+- Be direct. No preamble, no filler, no sycophancy.
+- When critiquing, lead with problems. If clean, say so in one line.
+- Quote the text when giving feedback. Be specific.
