@@ -23,18 +23,11 @@ func Critique(opts CritiqueOptions) error {
 		return launchReviewSession("review-scene", opts.Range, "high")
 	}
 
-	if !isWholeChapters(spec) {
-		return launchReviewSession("review-scene", opts.Range, "high")
+	skill := "review-scene"
+	if isWholeChapters(spec) {
+		skill = "review-chapter"
 	}
-
-	chapters := expandChapters(spec)
-	for _, ch := range chapters {
-		chRange := fmt.Sprintf("%d", ch)
-		if err := launchReviewSession("review-chapter", chRange, "high"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return launchReviewSession(skill, opts.Range, "high")
 }
 
 // isWholeChapters returns true if every ref in the spec is a whole-chapter
@@ -46,25 +39,6 @@ func isWholeChapters(spec RangeSpec) bool {
 		}
 	}
 	return len(spec.Refs) > 0
-}
-
-// expandChapters returns the individual chapter numbers for a whole-chapter
-// RangeSpec. For a list, it returns each ref's chapter. For a range, it
-// enumerates from start to end.
-func expandChapters(spec RangeSpec) []int {
-	if spec.Kind == "range" && len(spec.Refs) == 2 {
-		var chapters []int
-		for ch := spec.Refs[0].Chapter; ch <= spec.Refs[1].Chapter; ch++ {
-			chapters = append(chapters, ch)
-		}
-		return chapters
-	}
-	// list kind
-	chapters := make([]int, len(spec.Refs))
-	for i, ref := range spec.Refs {
-		chapters[i] = ref.Chapter
-	}
-	return chapters
 }
 
 // ProofOptions configures a manuscript proofing session.
