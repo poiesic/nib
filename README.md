@@ -247,3 +247,12 @@ task release VERSION=v1.0.0   # tag, cross-compile (4 platforms), create GitHub 
 ```
 
 Tests use `testify` for assertions. Pandoc and git commands are tested via injected `CommandRunner` functions that capture arguments without invoking real binaries. Filesystem tests use `t.TempDir()` for isolation. Agent operations use injectable function fields in options structs.
+
+## License
+
+Nib is dual-licensed:
+
+- **AGPL-3.0** — the nib CLI, bundled agent backends, and all other code not listed below. See [LICENSE](LICENSE).
+- **MIT** — the agent protocol specification (`docs/agent-protocol.md`, `docs/agent-schemas.md`) and the `internal/agent/` package. See [internal/agent/LICENSE](internal/agent/LICENSE).
+
+The intent: if you build a third-party agent backend for nib, you can use the protocol docs and the `internal/agent` integration code under MIT terms without the AGPL applying to your backend.
