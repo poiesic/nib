@@ -69,7 +69,7 @@ func Proof(opts ProofOptions) error {
 
 	prompt := fmt.Sprintf("/copy-edit %s", strings.Join(paths, " "))
 
-	text, err := agent.Complete(prompt, "low", []string{"Read", "Edit"}, projectRoot)
+	text, err := agent.Complete(prompt, "medium", []string{"Read", "Edit"}, projectRoot)
 	if err != nil {
 		return err
 	}
