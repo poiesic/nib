@@ -56,6 +56,8 @@ Evaluate against STYLE.md and the CLAUDE.md writing rules:
 - Verb strength
 - AI-pattern detection (does anything sound generated?)
 - Banned phrase detection (check the CLAUDE.md list)
+- Filter words in close POV: "he saw," "she noticed," "he felt," "she heard," "he realized" -- in close third, the POV is already established. Just show what they saw/noticed/felt/heard. Flag instances where the filter word adds nothing.
+- Throat-clearing: sentences that exist only to set up what the next sentence actually says. If the second sentence makes the point, the first is dead weight. Quote both sentences so the pattern is visible.
 
 If the score is below 4, quote the weakest passage and show how to fix it.
 
