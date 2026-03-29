@@ -43,7 +43,7 @@ func scaffold(req agent.Request) error {
 
 	resp := agent.ScaffoldResponse{
 		Type:      agent.RespSuccess,
-		Operation: agent.OpScaffold,
+		Operation: agent.OpProjectScaffold,
 		Files:     created,
 	}
 	return json.NewEncoder(os.Stdout).Encode(resp)

@@ -198,7 +198,7 @@ func Talk(opts TalkOptions) error {
 
 	if opts.Resume {
 		fmt.Fprintln(os.Stderr, "Resuming conversation...")
-		return agent.Converse("", agent.ConverseOptions{Session: session}, projectRoot)
+		return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session}, projectRoot)
 	}
 
 	// Verify character exists and read profile
@@ -234,7 +234,7 @@ func Talk(opts TalkOptions) error {
 	prompt := buildTalkPrompt(name, opts.Scene, string(profileData), recapBuf.String(), recapErr)
 
 	fmt.Fprintf(os.Stderr, "Resume with: nib pr talk --resume %s %s\n\n", opts.Slug, opts.Scene)
-	return agent.Converse(prompt, agent.ConverseOptions{Session: session}, projectRoot)
+	return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session, Context: prompt}, projectRoot)
 }
 
 func buildTalkPrompt(name, sceneRef, profile, recap string, recapErr error) string {

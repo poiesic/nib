@@ -14,18 +14,19 @@ import (
 	"github.com/poiesic/nib/internal/agent"
 )
 
-func converse(req agent.Request) error {
-	cfg := loadConfig(req.Effort)
+// converseSession runs an interactive chat session with the local model.
+func converseSession(effort, initialPrompt, sysPrompt string, session *agent.SessionOptions) error {
+	cfg := loadConfig(effort)
 
 	// Load or start conversation history
 	var messages []chatMessage
-	sessionPath := sessionFilePath(req)
+	sessionPath := sessionFilePathFromOpts(session)
 
-	if req.Session != nil && req.Session.New {
+	if session != nil && session.New {
 		os.Remove(sessionPath)
 	}
 
-	if req.Session != nil && req.Session.Resume {
+	if session != nil && session.Resume {
 		loaded, err := loadSession(sessionPath)
 		if err != nil {
 			return fmt.Errorf("loading session: %w", err)
@@ -36,11 +37,11 @@ func converse(req agent.Request) error {
 	// Initialize with system prompt if starting fresh
 	if len(messages) == 0 {
 		messages = []chatMessage{
-			{Role: "system", Content: systemPrompt},
+			{Role: "system", Content: sysPrompt},
 		}
 		// Add the initial prompt as the first user message
-		if req.Prompt != "" {
-			messages = append(messages, chatMessage{Role: "user", Content: req.Prompt})
+		if initialPrompt != "" {
+			messages = append(messages, chatMessage{Role: "user", Content: initialPrompt})
 
 			// Get and display the first response
 			text, err := chatStream(cfg, messages, os.Stdout)
@@ -81,7 +82,7 @@ func converse(req agent.Request) error {
 	}
 
 	// Save session
-	if req.Session != nil && req.Session.ID != "" {
+	if session != nil && session.ID != "" {
 		if err := saveSession(sessionPath, messages); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not save session: %v\n", err)
 		}
@@ -152,9 +153,9 @@ func chatStream(cfg config, messages []chatMessage, w io.Writer) (string, error)
 	return full.String(), nil
 }
 
-// sessionFilePath returns the path for storing conversation history.
-func sessionFilePath(req agent.Request) string {
-	if req.Session == nil || req.Session.ID == "" {
+// sessionFilePathFromOpts returns the path for storing conversation history.
+func sessionFilePathFromOpts(session *agent.SessionOptions) string {
+	if session == nil || session.ID == "" {
 		return ""
 	}
 	homeDir, err := os.UserHomeDir()
@@ -163,7 +164,7 @@ func sessionFilePath(req agent.Request) string {
 	}
 	dir := filepath.Join(homeDir, ".nib", "sessions")
 	os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, req.Session.ID+".json")
+	return filepath.Join(dir, session.ID+".json")
 }
 
 func loadSession(path string) ([]chatMessage, error) {

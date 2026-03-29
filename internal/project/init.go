@@ -47,7 +47,7 @@ type InitOptions struct {
 	Style         string        // STYLE.md variant: first-person, third-close, third-omniscient (default: first-person)
 	NoStyle       bool          // skip STYLE.md creation
 	Agent         string        // agent name for scaffolding (default: claude)
-	AgentScaffold ScaffoldFunc  // nil = agent.Scaffold
+	AgentScaffold ScaffoldFunc  // nil = agent.ProjectScaffold
 }
 
 // Init creates a new scrib project directory with the full scaffold.
@@ -152,7 +152,7 @@ func Init(projectName string, opts ...InitOptions) (string, error) {
 	// Ask the agent backend to write its scaffolding files
 	scaffoldFn := opt.AgentScaffold
 	if scaffoldFn == nil {
-		scaffoldFn = agent.Scaffold
+		scaffoldFn = agent.ProjectScaffold
 	}
 	absProjectDir, err := filepath.Abs(projectDir)
 	if err != nil {

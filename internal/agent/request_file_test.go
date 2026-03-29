@@ -11,11 +11,10 @@ import (
 
 func TestWriteReadRequestFile_roundTrip(t *testing.T) {
 	req := Request{
-		Operation: OpConverse,
-		Prompt:    "hello world",
-		Effort:    "high",
+		Operation: OpCharacterTalk,
+		Context:   "hello world",
 		Session:   &SessionOptions{ID: "test-session", Resume: true},
-		Tools:     []string{"Read", "Write"},
+		Paths:     []string{"scenes/test.md"},
 	}
 
 	path, err := WriteRequestFile(req)
@@ -29,11 +28,10 @@ func TestWriteReadRequestFile_roundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, req.Operation, got.Operation)
-	assert.Equal(t, req.Prompt, got.Prompt)
-	assert.Equal(t, req.Effort, got.Effort)
+	assert.Equal(t, req.Context, got.Context)
 	assert.Equal(t, req.Session.ID, got.Session.ID)
 	assert.True(t, got.Session.Resume)
-	assert.Equal(t, req.Tools, got.Tools)
+	assert.Equal(t, req.Paths, got.Paths)
 
 	// File should be removed after read
 	_, err = os.Stat(path)
@@ -42,8 +40,7 @@ func TestWriteReadRequestFile_roundTrip(t *testing.T) {
 
 func TestWriteRequestFile_validJSON(t *testing.T) {
 	req := Request{
-		Operation:   OpScaffold,
-		Prompt:      "scaffold a project",
+		Operation:   OpProjectScaffold,
 		ProjectName: "my-novel",
 		Schema:      json.RawMessage(`{"type":"object"}`),
 	}
@@ -57,7 +54,7 @@ func TestWriteRequestFile_validJSON(t *testing.T) {
 
 	var parsed map[string]any
 	require.NoError(t, json.Unmarshal(data, &parsed))
-	assert.Equal(t, "scaffold", parsed["operation"])
+	assert.Equal(t, "project-scaffold", parsed["operation"])
 	assert.Equal(t, "my-novel", parsed["project_name"])
 }
 

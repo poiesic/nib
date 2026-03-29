@@ -17,34 +17,56 @@ The name maps to an executable: `nib-agent-<name>`. For example, agent name `oll
 Nib runs the agent binary as a subprocess:
 
 - **Working directory** is set to the project root.
-- **stdin** receives a JSON request object.
-- **stdout** receives the JSON response (for pipe operations) or is passed through to the terminal (for interactive operations).
-- **stderr** is passed through to the terminal. Use it for diagnostic messages.
+- **stdin** receives a JSON request object (pipe mode) or is passed through to the terminal (interactive mode).
+- **stdout** receives the JSON response (pipe mode) or is passed through to the terminal (interactive mode).
+- **stderr** is always passed through to the terminal. Use it for diagnostic messages.
 - **Exit code 0** means success. Non-zero means failure.
+
+### Pipe vs Interactive Mode
+
+**Pipe operations** (`scene-proof`, `chapter-proof`, `voice-check`, `continuity-check`, `continuity-ask`, `continuity-index`, `project-scaffold`) send the request as JSON on stdin and expect a JSON response on stdout.
+
+**Interactive operations** (`scene-critique`, `chapter-critique`, `character-talk`) need the terminal for user interaction. The request is written to a temporary file and its path is passed via the `NIB_AGENT_REQUEST_FILE` environment variable. The backend reads the request from this file (and deletes it), then uses stdin/stdout/stderr for the interactive session. No JSON response is expected.
 
 ## Request Format
 
-Every operation sends a single JSON object on stdin:
+Every operation sends a single JSON object:
 
 ```json
 {
-  "operation": "complete",
-  "prompt": "...",
-  "effort": "medium",
-  "tools": ["Read", "Bash"],
+  "operation": "scene-proof",
+  "dir": "/absolute/path/to/project",
+  "paths": ["scenes/foo.md", "scenes/bar.md"],
+  "character_slug": "lance-thurgood",
+  "question": "Who drives Bo to Elko?",
+  "range": "1-5",
+  "context": "...",
   "schema": { ... },
   "session": { "id": "...", "resume": false, "new": false },
-  "dir": "/absolute/path/to/project",
-  "permissions": "acceptEdits",
   "project_name": "my-novel"
 }
 ```
 
 All fields except `operation` are optional. Which fields are present depends on the operation.
 
+### Field Reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `operation` | string | **Required.** The operation to perform. |
+| `dir` | string | Absolute path to the project root. Working directory is also set to this. |
+| `paths` | string[] | Scene/chapter file paths (relative to project root). |
+| `character_slug` | string | Character identifier (e.g. `lance-thurgood`). |
+| `question` | string | Plain-English question about the manuscript. |
+| `range` | string | Optional chapter/scene range to scope a query (e.g. `1-5`). |
+| `context` | string | Pre-assembled prompt content (e.g. character profile + recap for `character-talk`, or indexing prompt for `continuity-index`). |
+| `schema` | object | JSON Schema for structured output (`continuity-index` only). |
+| `session` | object | Session management options for interactive operations. |
+| `project_name` | string | Project name for template substitution (`project-scaffold` only). |
+
 ## Response Format
 
-All pipe operations (`complete`, `extract`, `scaffold`) return a JSON object on stdout with a `type` field that is either `"success"` or `"error"`.
+All pipe operations return a JSON object on stdout with a `type` field that is either `"success"` or `"error"`.
 
 ### Success
 
@@ -53,8 +75,8 @@ Success responses include `type`, `operation`, and operation-specific fields:
 ```json
 {
   "type": "success",
-  "operation": "complete",
-  "text": "..."
+  "operation": "scene-proof",
+  "text": "3 comma fixes, 1 apostrophe."
 }
 ```
 
@@ -73,145 +95,131 @@ Error responses include `type` and `error`:
 
 Backends should prefer structured errors over stderr when possible. Nib surfaces the `error` field directly to the user.
 
-### Response Schemas
-
-Each operation's success response can be validated with JSON Schema using `oneOf`:
-
-```json
-{
-  "oneOf": [
-    {
-      "type": "object",
-      "required": ["type", "operation", ...],
-      "properties": {
-        "type": {"const": "success"},
-        "operation": {"const": "complete"},
-        ...
-      }
-    },
-    {
-      "type": "object",
-      "required": ["type", "error"],
-      "properties": {
-        "type": {"const": "error"},
-        "error": {"type": "string"}
-      }
-    }
-  ]
-}
-```
-
 ## Operations
 
-### `complete`
+### `scene-proof`
 
-Send a prompt, get text back. Non-interactive.
+Mechanical proofreading of scene files. Fix grammar, punctuation, spelling, typos, and formatting. Do not make taste decisions or tighten prose. Edit files directly as a side effect.
 
-**Request fields:**
-- `prompt` — the prompt text
-- `effort` — suggested effort level (`low`, `medium`, `high`)
-- `tools` — tools the model should have access to (e.g. `["Read", "Bash"]`)
-- `dir` — project root (working directory is also set to this)
-
-**Success response:**
-```json
-{
-  "type": "success",
-  "operation": "complete",
-  "text": "The model's response text."
-}
-```
-
-**Used by:** `nib ct ask`, `nib ma proof`, `nib ct check`, `nib ma voice`
+**Request fields:** `paths`, `dir`
+**Response type:** text (summary of fixes)
+**Used by:** `nib ma proof` (with dotted scene refs)
 
 ---
 
-### `extract`
+### `chapter-proof`
 
-Send a prompt with a JSON schema, get structured data back. Non-interactive.
+Same as `scene-proof` but at chapter scope. The `paths` field contains all scenes in the chapter.
 
-**Request fields:**
-- `prompt` — the prompt text
-- `schema` — a JSON Schema object describing the expected response structure
-- `effort` — suggested effort level
-- `tools` — tools the model should have access to
-- `dir` — project root
+**Request fields:** `paths`, `dir`
+**Response type:** text (summary of fixes)
+**Used by:** `nib ma proof` (with whole-chapter refs)
+
+---
+
+### `scene-critique`
+
+Interactive editorial review of a scene. The backend takes over the terminal for a conversation about prose quality, pacing, voice, and purpose.
+
+**Request fields:** `paths`, `dir`
+**Response type:** interactive (no JSON response)
+**Used by:** `nib ma critique` (with dotted scene refs)
+
+---
+
+### `chapter-critique`
+
+Interactive editorial review of a chapter. The `paths` field contains all scenes in the chapter in narrative order.
+
+**Request fields:** `paths`, `dir`
+**Response type:** interactive (no JSON response)
+**Used by:** `nib ma critique` (with whole-chapter refs)
+
+---
+
+### `voice-check`
+
+Analyze character voice consistency across sampled scenes. Read the character's profile and check that their dialogue and POV narration match their established voice.
+
+**Request fields:** `character_slug`, `paths`, `dir`
+**Response type:** text (analysis)
+**Used by:** `nib ma voice`
+
+---
+
+### `continuity-check`
+
+Detect continuity errors in the specified scenes. Check for contradictions in facts, timelines, character knowledge, and physical details.
+
+**Request fields:** `paths`, `dir`
+**Response type:** text (findings)
+**Used by:** `nib ct check`
+
+---
+
+### `continuity-ask`
+
+Answer a research question about the manuscript. The backend should use available tools (file reads, nib CLI commands) to find evidence before answering.
+
+**Request fields:** `question`, `range` (optional), `dir`
+**Response type:** text (answer)
+**Used by:** `nib ct ask`
+
+---
+
+### `continuity-index`
+
+Extract structured continuity data from a scene. The `context` field contains the assembled prompt and the `schema` field contains the JSON Schema the response must conform to.
+
+**Request fields:** `context`, `schema`, `dir`
 
 **Success response:**
 ```json
 {
   "type": "success",
-  "operation": "extract",
+  "operation": "continuity-index",
   "data": { ... }
 }
 ```
 
-The `data` field contains the structured response conforming to the provided schema. The backend is responsible for enforcing schema compliance — how it does so is implementation-specific (JSON mode, guided generation, post-validation, etc.).
+The `data` field contains structured data conforming to the provided schema. The backend is responsible for enforcing schema compliance — how it does so is implementation-specific (JSON mode, guided generation, post-validation, etc.).
 
 **Used by:** `nib ct index`
 
 ---
 
-### `converse`
+### `character-talk`
 
-Launch an interactive session. The user talks to the model directly.
+Interactive in-character interview. The `context` field contains a pre-assembled prompt with the character's profile and story recap through a specific scene. The backend uses this as the initial message for a conversation.
 
-**Request fields:**
-- `prompt` — initial message (empty string if resuming)
-- `effort` — suggested effort level
-- `tools` — tools the model should have access to (omitted = unrestricted)
-- `session` — session management options (see below)
-- `permissions` — permission mode hint (e.g. `acceptEdits`)
-- `dir` — project root
-
-**Response:** None. The backend takes over stdout/stderr for the interactive session. Exit code indicates success or failure. The typed response format does not apply to `converse`.
-
-**TTY handling:** Since stdin carries the JSON request, the backend must reopen the terminal for interactive input:
-
-```go
-// Go
-tty, _ := os.Open("/dev/tty")  // Windows: "CON"
-```
-
-```python
-# Python
-tty = open("/dev/tty", "r")  # Windows: open("CON", "r")
-```
-
-```bash
-# Shell
-exec 3</dev/tty  # read user input from fd 3
-```
-
-Read the full JSON request from stdin first, then switch to the TTY for user interaction.
+**Request fields:** `context`, `session`, `dir`
+**Response type:** interactive (no JSON response)
 
 **Session options:**
 
 | Field    | Type   | Meaning |
 |----------|--------|---------|
-| `id`     | string | Session identifier (UUID). Use for persistence/resumption. |
-| `resume` | bool   | Resume an existing session instead of starting new. |
+| `id`     | string | Session identifier. Use for persistence/resumption. |
+| `resume` | bool   | Resume an existing session instead of starting new. When true, `context` is empty. |
 | `new`    | bool   | Delete any existing session with this ID and start fresh. |
 
-Session persistence is backend-specific. The `id` is a deterministic UUID v5 generated by nib — the same inputs always produce the same session ID.
+Session persistence is backend-specific.
 
-**Used by:** `nib ma critique`, `nib pr talk`
+**Used by:** `nib pr talk`
 
 ---
 
-### `scaffold`
+### `project-scaffold`
 
 Write agent-specific project files during `nib init`. Non-interactive.
 
-**Request fields:**
-- `dir` — absolute path to the project directory
-- `project_name` — the project name (for template substitution)
+**Request fields:** `dir`, `project_name`
 
 **Success response:**
 ```json
 {
   "type": "success",
-  "operation": "scaffold",
+  "operation": "project-scaffold",
   "files": [
     "CLAUDE.md",
     ".claude/skills/copy-edit/SKILL.md"
@@ -219,7 +227,7 @@ Write agent-specific project files during `nib init`. Non-interactive.
 }
 ```
 
-The `files` array lists relative paths of files the backend created. The backend writes files directly to `dir` — nib does not process the response further.
+The `files` array lists relative paths of files the backend created. The backend writes files directly to `dir`.
 
 **Used by:** `nib init`
 
@@ -230,31 +238,20 @@ Backends have two ways to report errors:
 1. **Structured (preferred):** Return `{"type": "error", "error": "message"}` on stdout with exit code 0. Nib surfaces the message directly.
 2. **Process-level:** Write to stderr and exit non-zero. Nib captures stderr and includes it in the error message.
 
-For `converse`, only process-level errors apply since the backend owns stdout.
+For interactive operations, only process-level errors apply since the backend owns stdout.
 
-## Effort Levels
+## Design Principles
 
-The `effort` field is a hint, not a directive. Map it to whatever makes sense for your provider:
+The protocol defines **what** to do, not **how**. Each operation is a domain concept (proof, critique, voice-check) rather than a generic AI primitive (complete, extract). This means:
 
-| Effort   | Intent |
-|----------|--------|
-| `low`    | Fast, cheap. Mechanical tasks like copy-editing. |
-| `medium` | Balanced. Structured extraction. |
-| `high`   | Thorough. Analysis, critique, complex queries. |
-
-## Tools
-
-The `tools` array names capabilities the model should have access to. Common values:
-
-- `Read` — read files from the project
-- `Edit` — modify files in the project
-- `Bash` — execute shell commands
-
-How you implement tool access depends on your provider. Some models support native tool use; others may need the tools described in the prompt.
+- **Backends own prompt construction.** Nib sends structured data (file paths, character slugs, questions). The backend decides how to prompt its model.
+- **Backends own execution strategy.** Whether to use tools, streaming, multiple passes, or guided generation is the backend's decision.
+- **Backends own configuration.** Effort levels, temperature, model selection, and tool permissions are internal to the backend.
+- **Swapping backends changes implementation, not behavior.** Every backend implements the same operations with the same semantic contract.
 
 ## Minimal Example
 
-A backend that echoes the prompt (useful for testing):
+A backend that handles proof operations (useful for testing):
 
 ```bash
 #!/usr/bin/env bash
@@ -264,19 +261,15 @@ request=$(cat)
 operation=$(echo "$request" | jq -r .operation)
 
 case "$operation" in
-  complete)
-    prompt=$(echo "$request" | jq -r .prompt)
-    printf '{"type":"success","operation":"complete","text":"Echo: %s"}\n' "$prompt"
+  scene-proof|chapter-proof)
+    printf '{"type":"success","operation":"%s","text":"No issues found."}\n' "$operation"
     ;;
-  extract)
-    echo '{"type":"success","operation":"extract","data":{}}'
+  project-scaffold)
+    echo '{"type":"success","operation":"project-scaffold","files":[]}'
     ;;
-  converse)
-    echo "Converse not supported" >&2
+  scene-critique|chapter-critique|character-talk)
+    echo "Interactive operations not supported" >&2
     exit 1
-    ;;
-  scaffold)
-    echo '{"type":"success","operation":"scaffold","files":[]}'
     ;;
   *)
     printf '{"type":"error","error":"unknown operation: %s"}\n' "$operation"
@@ -284,8 +277,9 @@ case "$operation" in
 esac
 ```
 
-Make it executable, put it on PATH as `nib-agent-echo`, and test with `NIB_AGENT=echo nib ct ask "hello"`.
+Make it executable, put it on PATH as `nib-agent-echo`, and test with `NIB_AGENT=echo nib ma proof 1.1`.
 
-## Reference Implementation
+## Reference Implementations
 
-See `cmd/nib-agent-claude/` in the nib repository for a complete implementation targeting Claude Code CLI.
+- `cmd/nib-agent-claude/` — Claude Code CLI backend (skills, session management)
+- `cmd/nib-agent-local/` — Local model backend (OpenAI-compatible API, tool loop)

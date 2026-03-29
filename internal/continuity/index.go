@@ -23,7 +23,7 @@ import (
 )
 
 // ExtractFunc is the function signature for agent extraction. Override in tests.
-type ExtractFunc func(prompt string, schema json.RawMessage, effort string, tools []string, dir string) (json.RawMessage, error)
+type ExtractFunc func(prompt string, schema json.RawMessage, dir string) (json.RawMessage, error)
 
 // IndexOptions configures the continuity index operation.
 // Specify Range (e.g. "3.2", "1-3", "1.1-2.3", "1,3,5"). If empty, falls back to focus.
@@ -31,7 +31,7 @@ type IndexOptions struct {
 	Range     string      // range expression (e.g. "3.2", "1-3", "1.1-2.3", "1,3,5")
 	Verbose   bool        // print prompt, command, and raw response
 	Force     bool        // index even if scene checksum hasn't changed
-	ExtractFn ExtractFunc // nil = agent.Extract
+	ExtractFn ExtractFunc // nil = agent.ContinuityIndex
 	Stdout    io.Writer   // nil = os.Stdout
 	Stdin     io.Reader   // nil = os.Stdin
 }
@@ -107,7 +107,7 @@ var jsonSchema = `{
 func Index(opts IndexOptions) error {
 	extractFn := opts.ExtractFn
 	if extractFn == nil {
-		extractFn = agent.Extract
+		extractFn = agent.ContinuityIndex
 	}
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -359,7 +359,7 @@ func extractScene(db *storydb.DB, slug string, isInterlude bool, projectRoot str
 	setStatus(phaseCall)
 
 	// Extract structured data via agent
-	data, err := extractFn(prompt, json.RawMessage(jsonSchema), "medium", []string{"Read"}, projectRoot)
+	data, err := extractFn(prompt, json.RawMessage(jsonSchema), projectRoot)
 	if err != nil {
 		return nil, false, fmt.Errorf("extraction failed: %w", err)
 	}

@@ -18,16 +18,29 @@ type CritiqueOptions struct {
 // /review-chapter session per chapter. When the range uses dotted scene refs
 // (e.g. "1.2-2.1", "1.1,2.3") it launches a single /review-scene session.
 func Critique(opts CritiqueOptions) error {
-	spec, err := ParseRange(opts.Range)
-	if err != nil {
-		return launchReviewSession("review-scene", opts.Range, "high")
+	if strings.TrimSpace(opts.Range) == "" {
+		return fmt.Errorf("range is required (e.g. 1-3, 1.1-2.3, 1,2,4)")
 	}
 
-	skill := "review-scene"
-	if isWholeChapters(spec) {
-		skill = "review-chapter"
+	projectRoot, _, book, err := bookio.Load()
+	if err != nil {
+		return err
 	}
-	return launchReviewSession(skill, opts.Range, "high")
+
+	spec, err := ParseRange(opts.Range)
+	if err != nil {
+		return err
+	}
+
+	paths, err := ResolveScenePaths(projectRoot, book, spec)
+	if err != nil {
+		return err
+	}
+
+	if isWholeChapters(spec) {
+		return agent.ChapterCritique(paths, projectRoot)
+	}
+	return agent.SceneCritique(paths, projectRoot)
 }
 
 // isWholeChapters returns true if every ref in the spec is a whole-chapter
@@ -67,38 +80,16 @@ func Proof(opts ProofOptions) error {
 		return err
 	}
 
-	prompt := fmt.Sprintf("/copy-edit %s", strings.Join(paths, " "))
-
-	text, err := agent.Complete(prompt, "medium", []string{"Read", "Edit"}, projectRoot)
+	var text string
+	if isWholeChapters(spec) {
+		text, err = agent.ChapterProof(paths, projectRoot)
+	} else {
+		text, err = agent.SceneProof(paths, projectRoot)
+	}
 	if err != nil {
 		return err
 	}
 
 	fmt.Print(strings.TrimLeft(text, "\n"))
 	return nil
-}
-
-func launchReviewSession(skill, rangeArg string, effort string) error {
-	if strings.TrimSpace(rangeArg) == "" {
-		return fmt.Errorf("range is required (e.g. 1-3, 1.1-2.3, 1,2,4)")
-	}
-
-	projectRoot, _, book, err := bookio.Load()
-	if err != nil {
-		return err
-	}
-
-	spec, err := ParseRange(rangeArg)
-	if err != nil {
-		return err
-	}
-
-	paths, err := ResolveScenePaths(projectRoot, book, spec)
-	if err != nil {
-		return err
-	}
-
-	prompt := fmt.Sprintf("/%s %s", skill, strings.Join(paths, " "))
-
-	return agent.Converse(prompt, agent.ConverseOptions{Effort: effort}, projectRoot)
 }

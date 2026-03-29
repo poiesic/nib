@@ -55,12 +55,10 @@ func Voice(opts VoiceOptions) error {
 			return err
 		}
 
-		prompt := fmt.Sprintf("/voice-check %s %s", slug, strings.Join(paths, " "))
-
 		fmt.Fprintf(os.Stderr, "Checking %s: sampling %d of %d scenes\n",
 			slug, len(sampled), len(scenes))
 
-		text, err := agent.Complete(prompt, "high", []string{"Read"}, projectRoot)
+		text, err := agent.VoiceCheck(slug, paths, projectRoot)
 		if err != nil {
 			return err
 		}

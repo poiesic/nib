@@ -18,7 +18,7 @@ import (
 // and increments a call counter.
 func mockExtractFn(result ExtractionResult, callCount *atomic.Int32) ExtractFunc {
 	data, _ := json.Marshal(result)
-	return func(prompt string, schema json.RawMessage, effort string, tools []string, dir string) (json.RawMessage, error) {
+	return func(prompt string, schema json.RawMessage, dir string) (json.RawMessage, error) {
 		if callCount != nil {
 			callCount.Add(1)
 		}

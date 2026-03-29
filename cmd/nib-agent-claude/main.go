@@ -18,62 +18,68 @@ func main() {
 	}
 
 	switch req.Operation {
-	case agent.OpComplete:
-		if err := complete(req); err != nil {
-			fatal("%v", err)
-		}
-	case agent.OpExtract:
-		if err := extract(req); err != nil {
-			fatal("%v", err)
-		}
-	case agent.OpConverse:
-		if err := converse(req); err != nil {
-			fatal("%v", err)
-		}
-	case agent.OpScaffold:
-		if err := scaffold(req); err != nil {
-			fatal("%v", err)
-		}
+	case agent.OpSceneProof:
+		err = proof(req)
+	case agent.OpChapterProof:
+		err = proof(req)
+	case agent.OpSceneCritique:
+		err = critique(req, "review-scene")
+	case agent.OpChapterCritique:
+		err = critique(req, "review-chapter")
+	case agent.OpVoiceCheck:
+		err = voiceCheck(req)
+	case agent.OpContinuityCheck:
+		err = continuityCheck(req)
+	case agent.OpContinuityAsk:
+		err = continuityAsk(req)
+	case agent.OpContinuityIndex:
+		err = continuityIndex(req)
+	case agent.OpCharacterTalk:
+		err = characterTalk(req)
+	case agent.OpProjectScaffold:
+		err = scaffold(req)
 	default:
 		fatal("unknown operation: %s", req.Operation)
 	}
+	if err != nil {
+		fatal("%v", err)
+	}
 }
 
-func complete(req agent.Request) error {
-	args := []string{"-p", req.Prompt, "--no-session-persistence"}
-	args = appendCommon(args, req)
-
-	cmd := exec.Command("claude", args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		if stderr.Len() > 0 {
-			return fmt.Errorf("claude: %s", strings.TrimSpace(stderr.String()))
-		}
-		if stdout.Len() > 0 {
-			return fmt.Errorf("claude: %s", strings.TrimSpace(stdout.String()))
-		}
-		return fmt.Errorf("claude: %w", err)
-	}
-
-	resp := agent.CompleteResponse{
-		Type:      agent.RespSuccess,
-		Operation: agent.OpComplete,
-		Text:      stdout.String(),
-	}
-	return json.NewEncoder(os.Stdout).Encode(resp)
+func proof(req agent.Request) error {
+	prompt := fmt.Sprintf("/copy-edit %s", strings.Join(req.Paths, " "))
+	return runPipe(prompt, "medium", []string{"Read", "Edit"}, req.Operation)
 }
 
-func extract(req agent.Request) error {
+func critique(req agent.Request, skill string) error {
+	prompt := fmt.Sprintf("/%s %s", skill, strings.Join(req.Paths, " "))
+	return runInteractive(prompt, "high", nil)
+}
+
+func voiceCheck(req agent.Request) error {
+	prompt := fmt.Sprintf("/voice-check %s %s", req.CharacterSlug, strings.Join(req.Paths, " "))
+	return runPipe(prompt, "high", []string{"Read"}, req.Operation)
+}
+
+func continuityCheck(req agent.Request) error {
+	prompt := fmt.Sprintf("/continuity-check %s", strings.Join(req.Paths, " "))
+	return runPipe(prompt, "high", []string{"Read", "Bash"}, req.Operation)
+}
+
+func continuityAsk(req agent.Request) error {
+	prompt := buildAskPrompt(req.Question, req.Range)
+	return runPipe(prompt, "high", []string{"Read", "Bash"}, req.Operation)
+}
+
+func continuityIndex(req agent.Request) error {
 	args := []string{
-		"-p", req.Prompt,
+		"-p", req.Context,
 		"--output-format", "json",
 		"--json-schema", string(req.Schema),
 		"--no-session-persistence",
+		"--effort", "medium",
+		"--allowedTools", "Read",
 	}
-	args = appendCommon(args, req)
 
 	cmd := exec.Command("claude", args...)
 	var stdout, stderr bytes.Buffer
@@ -101,37 +107,71 @@ func extract(req agent.Request) error {
 		return fmt.Errorf("claude returned no structured_output")
 	}
 
-	resp := agent.ExtractResponse{
+	resp := agent.IndexResponse{
 		Type:      agent.RespSuccess,
-		Operation: agent.OpExtract,
+		Operation: agent.OpContinuityIndex,
 		Data:      envelope.StructuredOutput,
 	}
 	return json.NewEncoder(os.Stdout).Encode(resp)
 }
 
-func converse(req agent.Request) error {
-	// Handle --new: delete existing session file
+func characterTalk(req agent.Request) error {
 	if req.Session != nil && req.Session.New && req.Session.ID != "" {
 		deleteSessionFile(req.Session.ID)
 	}
 
-	var args []string
 	if req.Session != nil && req.Session.Resume {
-		args = []string{"--resume", req.Session.ID}
+		return runInteractive("", "", req.Session)
+	}
+	return runInteractive(req.Context, "", req.Session)
+}
+
+// runPipe invokes claude in non-interactive pipe mode and writes a CompleteResponse to stdout.
+func runPipe(prompt, effort string, tools []string, op agent.Operation) error {
+	args := []string{"-p", prompt, "--no-session-persistence"}
+	if effort != "" {
+		args = append(args, "--effort", effort)
+	}
+	if len(tools) > 0 {
+		args = append(args, "--allowedTools", strings.Join(tools, ","))
+	}
+
+	cmd := exec.Command("claude", args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			return fmt.Errorf("claude: %s", strings.TrimSpace(stderr.String()))
+		}
+		if stdout.Len() > 0 {
+			return fmt.Errorf("claude: %s", strings.TrimSpace(stdout.String()))
+		}
+		return fmt.Errorf("claude: %w", err)
+	}
+
+	resp := agent.CompleteResponse{
+		Type:      agent.RespSuccess,
+		Operation: op,
+		Text:      stdout.String(),
+	}
+	return json.NewEncoder(os.Stdout).Encode(resp)
+}
+
+// runInteractive invokes claude with TTY passthrough for interactive sessions.
+func runInteractive(prompt, effort string, session *agent.SessionOptions) error {
+	var args []string
+	if session != nil && session.Resume {
+		args = []string{"--resume", session.ID}
 	} else {
-		args = []string{req.Prompt}
-		if req.Session != nil && req.Session.ID != "" {
-			args = append(args, "--session-id", req.Session.ID)
+		args = []string{prompt}
+		if session != nil && session.ID != "" {
+			args = append(args, "--session-id", session.ID)
 		}
 	}
-	if req.Effort != "" {
-		args = append(args, "--effort", req.Effort)
-	}
-	if req.Permissions != "" {
-		args = append(args, "--permission-mode", req.Permissions)
-	}
-	if len(req.Tools) > 0 {
-		args = append(args, "--allowedTools", strings.Join(req.Tools, ","))
+	if effort != "" {
+		args = append(args, "--effort", effort)
 	}
 
 	cmd := exec.Command("claude", args...)
@@ -141,8 +181,8 @@ func converse(req agent.Request) error {
 	err := cmd.Run()
 
 	// Auto-resume if session already exists
-	if err != nil && req.Session != nil && !req.Session.Resume && req.Session.ID != "" {
-		resumeCmd := exec.Command("claude", "--resume", req.Session.ID)
+	if err != nil && session != nil && !session.Resume && session.ID != "" {
+		resumeCmd := exec.Command("claude", "--resume", session.ID)
 		resumeCmd.Stdin = os.Stdin
 		resumeCmd.Stdout = os.Stdout
 		resumeCmd.Stderr = os.Stderr
@@ -169,14 +209,49 @@ func deleteSessionFile(sessionID string) {
 	os.Remove(path)
 }
 
-func appendCommon(args []string, req agent.Request) []string {
-	if req.Effort != "" {
-		args = append(args, "--effort", req.Effort)
+func buildAskPrompt(question, rangeExpr string) string {
+	var b strings.Builder
+
+	b.WriteString("You are a research assistant for a novel manuscript managed by `nib`.\n\n")
+
+	b.WriteString("## How to find information\n\n")
+	b.WriteString("You have access to these tools for locating information in the manuscript:\n\n")
+
+	b.WriteString("### Nib commands (run via Bash)\n")
+	b.WriteString("- `nib ct recap <range>` -- JSON summaries of scenes in a chapter range (e.g. `1-5`, `3`, `1,3,5`)\n")
+	b.WriteString("- `nib ct recap <range> --detailed` -- includes facts, locations, dates, times, and all character appearances\n")
+	b.WriteString("- `nib ct recap <range> -c <character-slug>` -- filter recap to scenes involving a character (repeatable)\n")
+	b.WriteString("- `nib ct characters` -- list all known character slugs from indexed data\n")
+	b.WriteString("- `nib ct characters <range>` -- characters in a specific chapter range\n")
+	b.WriteString("- `nib ct chapters <character> [character...]` -- find scenes where characters appear together (AND)\n")
+	b.WriteString("- `nib ct chapters --or <character> [character...]` -- find scenes per character (OR)\n")
+	b.WriteString("- `nib ma status` -- manuscript statistics (chapters, scenes, word count)\n\n")
+
+	b.WriteString("### File access (via Read)\n")
+	b.WriteString("- `scenes/<slug>.md` -- scene prose files\n")
+	b.WriteString("- `characters/<slug>.yaml` -- character profiles\n")
+	b.WriteString("- `book.yaml` -- chapter structure and scene ordering\n")
+	b.WriteString("- `storydb/` -- CSV files with indexed continuity data\n\n")
+
+	b.WriteString("## Strategy\n\n")
+	b.WriteString("1. Start with the nib commands to locate relevant scenes and data.\n")
+	b.WriteString("2. Read specific scene files only when you need the actual prose (exact wording, dialogue, descriptions).\n")
+	b.WriteString("3. Use character profiles when the question involves character traits, background, or relationships.\n")
+	b.WriteString("4. Synthesize a clear, direct answer. Cite specific scenes (by slug or chapter.scene number) when relevant.\n\n")
+
+	b.WriteString("## Rules\n\n")
+	b.WriteString("- Answer the question directly. No preamble, no restating the question.\n")
+	b.WriteString("- Cite evidence from the manuscript. Quote relevant passages when they strengthen the answer.\n")
+	b.WriteString("- If the indexed data doesn't cover the answer, say so -- don't guess.\n")
+	b.WriteString("- Keep the answer concise but complete.\n\n")
+
+	if rangeExpr != "" {
+		fmt.Fprintf(&b, "## Scope\n\nLimit your search to chapters/scenes in range: %s\n\n", rangeExpr)
 	}
-	if len(req.Tools) > 0 {
-		args = append(args, "--allowedTools", strings.Join(req.Tools, ","))
-	}
-	return args
+
+	fmt.Fprintf(&b, "## Question\n\n%s\n", question)
+
+	return b.String()
 }
 
 func readRequest() (agent.Request, error) {

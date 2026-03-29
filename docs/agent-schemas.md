@@ -12,47 +12,57 @@ Companion to [agent-protocol.md](agent-protocol.md). These schemas can be used t
   "properties": {
     "operation": {
       "type": "string",
-      "enum": ["complete", "extract", "converse", "scaffold"]
-    },
-    "prompt": {
-      "type": "string",
-      "description": "Prompt text for the model"
-    },
-    "effort": {
-      "type": "string",
-      "enum": ["low", "medium", "high"],
-      "description": "Suggested effort level"
-    },
-    "tools": {
-      "type": "array",
-      "items": {"type": "string"},
-      "description": "Tools the model should have access to (e.g. Read, Edit, Bash)"
-    },
-    "schema": {
-      "type": "object",
-      "description": "JSON Schema for structured output (extract only)"
-    },
-    "session": {
-      "$ref": "#/$defs/session_options"
+      "enum": [
+        "scene-proof", "chapter-proof",
+        "scene-critique", "chapter-critique",
+        "voice-check",
+        "continuity-check", "continuity-ask", "continuity-index",
+        "character-talk",
+        "project-scaffold"
+      ]
     },
     "dir": {
       "type": "string",
       "description": "Absolute path to the project root"
     },
-    "permissions": {
+    "paths": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Scene/chapter file paths relative to project root"
+    },
+    "character_slug": {
       "type": "string",
-      "description": "Permission mode hint (e.g. acceptEdits)"
+      "description": "Character identifier (e.g. lance-thurgood)"
+    },
+    "question": {
+      "type": "string",
+      "description": "Plain-English question about the manuscript"
+    },
+    "range": {
+      "type": "string",
+      "description": "Optional chapter/scene range to scope a query (e.g. 1-5)"
+    },
+    "context": {
+      "type": "string",
+      "description": "Pre-assembled prompt content (character-talk, continuity-index)"
+    },
+    "schema": {
+      "type": "object",
+      "description": "JSON Schema for structured output (continuity-index only)"
+    },
+    "session": {
+      "$ref": "#/$defs/session_options"
     },
     "project_name": {
       "type": "string",
-      "description": "Project name for template substitution (scaffold only)"
+      "description": "Project name for template substitution (project-scaffold only)"
     }
   },
   "$defs": {
     "session_options": {
       "type": "object",
       "properties": {
-        "id":     {"type": "string", "description": "Session identifier (UUID)"},
+        "id":     {"type": "string", "description": "Session identifier"},
         "resume": {"type": "boolean", "description": "Resume existing session"},
         "new":    {"type": "boolean", "description": "Delete existing session and start fresh"}
       }
@@ -63,11 +73,11 @@ Companion to [agent-protocol.md](agent-protocol.md). These schemas can be used t
 
 ## Responses
 
-All pipe operations (`complete`, `extract`, `scaffold`) return one of two shapes: success or error. The `converse` operation does not return JSON.
+Pipe operations return one of two shapes: success or error. Interactive operations (`scene-critique`, `chapter-critique`, `character-talk`) do not return JSON.
 
 ### Error Response
 
-Returned by any operation on failure.
+Returned by any pipe operation on failure.
 
 ```json
 {
@@ -81,7 +91,9 @@ Returned by any operation on failure.
 }
 ```
 
-### `complete` — Success Response
+### Text Response
+
+Returned by `scene-proof`, `chapter-proof`, `voice-check`, `continuity-check`, `continuity-ask`.
 
 ```json
 {
@@ -90,13 +102,15 @@ Returned by any operation on failure.
   "required": ["type", "operation", "text"],
   "properties": {
     "type":      {"const": "success"},
-    "operation": {"const": "complete"},
-    "text":      {"type": "string", "description": "The model's text response"}
+    "operation": {"type": "string"},
+    "text":      {"type": "string", "description": "The operation's text output"}
   }
 }
 ```
 
-### `extract` — Success Response
+### Index Response
+
+Returned by `continuity-index`.
 
 ```json
 {
@@ -105,13 +119,15 @@ Returned by any operation on failure.
   "required": ["type", "operation", "data"],
   "properties": {
     "type":      {"const": "success"},
-    "operation": {"const": "extract"},
+    "operation": {"const": "continuity-index"},
     "data":      {"type": "object", "description": "Structured data conforming to the request schema"}
   }
 }
 ```
 
-### `scaffold` — Success Response
+### Scaffold Response
+
+Returned by `project-scaffold`.
 
 ```json
 {
@@ -120,7 +136,7 @@ Returned by any operation on failure.
   "required": ["type", "operation", "files"],
   "properties": {
     "type":      {"const": "success"},
-    "operation": {"const": "scaffold"},
+    "operation": {"const": "project-scaffold"},
     "files": {
       "type": "array",
       "items": {"type": "string"},
@@ -151,7 +167,7 @@ Use this to validate any pipe operation response in a single pass:
       "required": ["type", "operation", "text"],
       "properties": {
         "type":      {"const": "success"},
-        "operation": {"const": "complete"},
+        "operation": {"type": "string"},
         "text":      {"type": "string"}
       }
     },
@@ -160,7 +176,7 @@ Use this to validate any pipe operation response in a single pass:
       "required": ["type", "operation", "data"],
       "properties": {
         "type":      {"const": "success"},
-        "operation": {"const": "extract"},
+        "operation": {"const": "continuity-index"},
         "data":      {"type": "object"}
       }
     },
@@ -169,7 +185,7 @@ Use this to validate any pipe operation response in a single pass:
       "required": ["type", "operation", "files"],
       "properties": {
         "type":      {"const": "success"},
-        "operation": {"const": "scaffold"},
+        "operation": {"const": "project-scaffold"},
         "files":     {"type": "array", "items": {"type": "string"}}
       }
     }
