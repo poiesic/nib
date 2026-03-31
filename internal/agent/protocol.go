@@ -15,7 +15,8 @@ const (
 	OpContinuityAsk   Operation = "continuity-ask"
 	OpContinuityIndex Operation = "continuity-index"
 	OpCharacterTalk   Operation = "character-talk"
-	OpProjectScaffold Operation = "project-scaffold"
+	OpProjectScaffold    Operation = "project-scaffold"
+	OpManuscriptSearch   Operation = "manuscript-search"
 )
 
 // Request is the JSON payload sent to an agent backend on stdin.

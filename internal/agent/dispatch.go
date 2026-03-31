@@ -106,6 +106,16 @@ func ContinuityAsk(question, rangeExpr, dir string) (string, error) {
 	})
 }
 
+// ManuscriptSearch runs a natural-language search across the specified scenes.
+func ManuscriptSearch(query string, paths []string, dir string) (string, error) {
+	return completeOp(Request{
+		Operation: OpManuscriptSearch,
+		Question:  query,
+		Paths:     paths,
+		Dir:       dir,
+	})
+}
+
 // SceneCritique launches an interactive editorial review of a scene.
 func SceneCritique(paths []string, dir string) error {
 	return interactiveOp(Request{

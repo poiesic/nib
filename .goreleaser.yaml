@@ -1,0 +1,36 @@
+version: 2
+
+builds:
+  - id: nib
+    main: ./cmd/nib
+    binary: nib
+    ldflags:
+      - -X github.com/poiesic/nib/internal/version.Version={{.Tag}}
+      - -X github.com/poiesic/nib/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/poiesic/nib/internal/version.Date={{.Date}}
+    targets:
+      - darwin_arm64
+      - linux_arm64
+      - linux_amd64
+      - windows_amd64
+
+  - id: nib-agent-claude
+    main: ./cmd/nib-agent-claude
+    binary: nib-agent-claude
+    targets:
+      - darwin_arm64
+      - linux_arm64
+      - linux_amd64
+      - windows_amd64
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  prerelease: auto
+
+changelog:
+  use: github-native

@@ -81,13 +81,25 @@ Specific lines or passages that have problems. Quote the line, explain the issue
 
 A 1-5 overall rating with honest justification. Follow the editorial honesty rules: lead with weaknesses, don't cushion criticism, rate honestly (not everything is a 3+). If the scene doesn't work, say so plainly.
 
+## Scoring Rubric
+
+Every 1-5 rating must use this scale:
+
+- **5** — Exceptional. Publishable as-is. You'd point to this as an example of the craft done right.
+- **4** — Solid. Minor issues only; none that would bother a reader.
+- **3** — Functional. Does its job but has clear weaknesses that should be addressed.
+- **2** — Struggling. Significant problems that undermine the scene's purpose.
+- **1** — Broken. Fails at what it's trying to do. Needs fundamental rework.
+
+Most scenes in a competent manuscript will land at 3-4. A 5 should be rare and earned. A 1-2 means something is genuinely wrong, not just imperfect.
+
 ## Rules
 
 - **Proportional length:** If a section scores 4 or above and you have no specific issues to flag, give the score and a single sentence. Don't elaborate on things that are working fine. Short notes on clean scenes, long notes on troubled ones.
-- Be direct. No "this is strong but could be stronger."
+- Lead with weaknesses. Don't manufacture praise to balance criticism.
 - If the scene doesn't work, say so and explain why.
 - Every criticism must come with a concrete fix -- a rewrite, a restructure, or a cut. No vague complaints.
 - Every rating must be justified with specific evidence from the text.
 - Compare against other scenes in the manuscript where relevant -- name stronger and weaker examples.
-- Don't manufacture praise to balance criticism. If there are more problems than strengths, the review should reflect that ratio.
+- **Accuracy:** When you quote the text, quote it exactly as it appears in the file. Do not paraphrase, reconstruct from memory, or combine separate passages into one quote. If you're unsure of the exact wording, re-read the file before quoting.
 - **Work-in-progress awareness:** This manuscript is being actively written. If the scene under review is the frontier scene: unresolved plot threads, open questions, and endings that don't wrap up are **expected and normal** -- the book isn't finished. Do not mention them as weaknesses. Do not reduce scores because of them. Do not frame them as "things to address." They are not flaws; they are the natural state of a story mid-draft. Score the scene purely on the quality of what's on the page: prose, character voice, pacing, and purpose.

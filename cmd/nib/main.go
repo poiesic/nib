@@ -831,6 +831,23 @@ func manuscriptCommand() *cli.Command {
 				},
 			},
 			{
+				Name:      "search",
+				Aliases:   []string{"se"},
+				Usage:     "search scenes with a plain-English query (e.g. 1-3, 1.1-2.3, 1,2,4)",
+				ArgsUsage: "<range> <query>",
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					args := cmd.Args()
+					if args.Len() < 2 {
+						return fmt.Errorf("usage: nib manuscript search <range> \"<query>\"\n\nExamples:\n  nib ma search 1-41 \"body words near emotion verbs\"\n  nib ma se 1.1-5.3 \"dialogue where characters lie\"")
+					}
+					query := strings.Join(args.Slice()[1:], " ")
+					return manuscript.Search(manuscript.SearchOptions{
+						Range: args.First(),
+						Query: query,
+					})
+				},
+			},
+			{
 				Name:      "critique",
 				Aliases:   []string{"cr"},
 				Usage:     "review scenes with Claude Code (e.g. 1-3, 1.1-2.3, 1,2,4)",

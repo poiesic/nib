@@ -38,6 +38,8 @@ func main() {
 		err = characterTalk(req)
 	case agent.OpProjectScaffold:
 		err = scaffold(req)
+	case agent.OpManuscriptSearch:
+		err = manuscriptSearch(req)
 	default:
 		fatal("unknown operation: %s", req.Operation)
 	}
@@ -69,6 +71,11 @@ func continuityCheck(req agent.Request) error {
 func continuityAsk(req agent.Request) error {
 	prompt := buildAskPrompt(req.Question, req.Range)
 	return runPipe(prompt, "high", []string{"Read", "Bash"}, req.Operation)
+}
+
+func manuscriptSearch(req agent.Request) error {
+	prompt := buildSearchPrompt(req.Question, req.Paths)
+	return runPipe(prompt, "high", []string{"Read"}, req.Operation)
 }
 
 func continuityIndex(req agent.Request) error {
@@ -250,6 +257,31 @@ func buildAskPrompt(question, rangeExpr string) string {
 	}
 
 	fmt.Fprintf(&b, "## Question\n\n%s\n", question)
+
+	return b.String()
+}
+
+func buildSearchPrompt(query string, paths []string) string {
+	var b strings.Builder
+
+	b.WriteString("You are a manuscript search tool. Your job is to find lines in scene files that match a plain-English search query.\n\n")
+
+	b.WriteString("## Search query\n\n")
+	fmt.Fprintf(&b, "%s\n\n", query)
+
+	b.WriteString("## Scene files to search\n\n")
+	for _, p := range paths {
+		fmt.Fprintf(&b, "- %s\n", p)
+	}
+
+	b.WriteString("\n## Instructions\n\n")
+	b.WriteString("1. Read each scene file listed above.\n")
+	b.WriteString("2. Find every line that matches the search query.\n")
+	b.WriteString("3. Output results as a list. Each hit should be on its own line in this format:\n\n")
+	b.WriteString("   <scene-file>:<line-number>  <the matching line text>\n\n")
+	b.WriteString("4. Use the scene filename (not the full path) in output — e.g. `my-scene.md:42`.\n")
+	b.WriteString("5. If no matches are found, say \"No matches found.\"\n")
+	b.WriteString("6. Do not add commentary, summaries, or explanations. Only output the matching lines.\n")
 
 	return b.String()
 }
