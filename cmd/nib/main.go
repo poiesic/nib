@@ -22,7 +22,7 @@ import (
 func main() {
 	app := &cli.Command{
 		Name:                  "nib",
-		Usage:                 "a novel-writing CLI tool",
+		Usage:                 "CLI editorial infrastructure for writers",
 		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

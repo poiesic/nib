@@ -1,21 +1,81 @@
-# Nib Overview
+# nib
 
-Nib is a novel-writing CLI tool. It handles project scaffolding, manuscript assembly, build automation, scene management, character profiles, and AI-assisted continuity tracking. It is editorial infrastructure -- it does not generate prose.
+A tool to handle the mechanics of your novel so you can focus on writing.
 
-## Guiding Principles
+## Talk to your characters
 
-- **Local-first.** Manuscript never leaves the author's machine.
-- **Not a content generator.** Reads, organizes, and checks. AI is used as an inference engine for structured extraction (continuity indexing) and interactive creative sessions, not for writing.
+Launch an interactive session where the AI role-plays as any character at any point in your story. Grounded in their profile, personality, and knowledge of events through the scene you specify.
+
+```
+nib profile talk elena 12.3
+```
+
+## Ask your manuscript anything
+
+Plain-English questions answered from your indexed continuity data, with citations back to specific scenes.
+
+```
+nib continuity ask "When did Marcus first learn about the letter?"
+```
+
+## Verified continuity data
+
+AI-powered extraction of facts, characters, locations, and timeline from your prose. Every record passes through single-keypress review — hallucinated data never enters your database silently.
+
+```
+nib continuity index 1-5
+```
+
+## One notation, every command
+
+`3.2` means chapter 3, scene 2. Ranges like `1-5` and `1.1-3.2` work everywhere — index, recap, critique, proof, build, and talk.
+
+## Build to any format
+
+Assemble scenes into a complete manuscript and export to Markdown, DOCX, PDF, or EPUB via Pandoc. Supports Shunn standard manuscript format for submissions.
+
+```
+nib manuscript build docx
+```
+
+## Principles
+
+- **Local-first.** Your manuscript never leaves your machine.
+- **Not a content generator.** Reads, organizes, and checks. AI is an inference engine for structured extraction and interactive creative sessions, not for writing.
 - **Git-friendly.** All source-of-truth files are plaintext: YAML, JSONL, Markdown.
-- **Agent-neutral.** AI operations go through a backend protocol. Ship with Claude and local model backends. Authors choose per-project.
+- **Agent-neutral.** AI operations go through a backend protocol. Ships with Claude and local model backends. Choose per-project.
+
+## Getting Started
+
+```
+nib init my-novel
+```
+
+This scaffolds a complete project:
+
+```
+my-novel/
+  scenes/                   Scene prose files (pure markdown)
+  characters/               Character profile YAML files
+  storydb/                  Indexed continuity data (CSV)
+  appendices/               Supporting documents
+  assets/                   Images and other media
+  build/                    Generated output (gitignored)
+  pandoc-templates/         Manuscript formatting templates
+  STYLE.md                  Voice and prose style guide
+  TROPES.md                 AI writing tropes to avoid
+  book.yaml                 Front matter + chapter/scene ordering
+```
+
+Style variants are available for first-person, third-close, and third-omniscient narration (`nib init --style third-close`). Run `nib styles` to see the full list.
 
 ## Dependencies
 
-Nib depends on [binder](https://github.com/poiesic/binder). Binder provides the core logic for parsing `book.yaml` and assembling scene files into per-chapter markdown. Nib imports binder as a Go library, not as a subprocess.
+Nib depends on [binder](https://github.com/poiesic/binder) for parsing `book.yaml` and assembling scene files into per-chapter markdown. Binder is imported as a Go library, not a subprocess.
 
-External tools: `pandoc` (for docx/pdf/epub builds), `git` (for project init), and a configured AI agent backend (for continuity indexing, critique, proof, and character talk sessions).
+External tools: [Pandoc](https://pandoc.org/) for manuscript builds, `git` for project init, and a configured AI agent backend for continuity, critique, proof, and character sessions.
 
-## Command Surface
+## Commands
 
 Aliases are shown in parentheses.
 
@@ -55,7 +115,7 @@ nib profile talk <slug> <scene>        # role-play as a character (see below)
 nib profile remove <slug>              # remove a character profile
 ```
 
-**`profile talk`** launches an interactive AI session where the AI role-plays as a character at a specific point in the story. It uses the character's YAML profile and a character-filtered continuity recap to ground the conversation. Useful for testing dialogue voice, exploring character motivation, or pressure-testing plot decisions. The scene argument uses dotted notation (e.g. `37.2`) to set where in the story the character "is" -- they know everything up to that point and nothing after. Sessions persist by default; use `--resume` to continue or `--new` to start fresh.
+`profile talk` launches an interactive AI session where the AI role-plays as a character at a specific point in the story. It uses the character's YAML profile and a character-filtered continuity recap to ground the conversation. The scene argument uses dotted notation (e.g. `37.2`) to set where in the story the character "is" — they know everything up to that point and nothing after. Sessions persist by default; use `--resume` to continue or `--new` to start fresh.
 
 ### Scenes (sc)
 
@@ -79,6 +139,7 @@ nib manuscript build [format]          # assemble + pandoc (md/docx/pdf/epub/all
       --scene-headings                   # include scene filenames as headings
 nib manuscript status                  # word count, scene stats, unassigned scenes
 nib manuscript toc                     # chapter/scene structure in dotted notation
+nib manuscript search <range> <query>  # search scenes with a plain-English query
 nib manuscript critique <range>        # AI-powered structured scene/chapter review
 nib manuscript proof <range>           # AI-powered copy-editing (edits in place)
 nib manuscript voice <char> [char...]  # check character voice consistency
@@ -106,102 +167,13 @@ nib continuity ask "<question>"        # ask a plain-English question about the 
 nib continuity reset [--yes]           # clear all indexed continuity data
 ```
 
-## Scaffolded Project Layout
+## AI Backends
 
-`nib init my-novel` creates:
+Nib delegates all AI operations to external agent backends — standalone executables that communicate via JSON over stdin/stdout. The active backend is resolved from: `NIB_AGENT` env var > `git config nib.agent` > default (`claude`).
 
-```
-my-novel/
-  scenes/                   Scene prose files (pure markdown, no frontmatter)
-  characters/               Character profile YAML files (one per character)
-  storydb/                  CSV tables (scenes, facts, locations, etc.)
-  appendices/               Supporting documents
-  assets/                   Images and other media
-  build/                    Generated output (gitignored)
-  pandoc-templates/         Git submodule for manuscript formatting
-  STYLE.md                  Voice and prose style guide
-  TROPES.md                 AI writing tropes to avoid
-  book.yaml                 Front matter + chapter/scene ordering (two-doc YAML)
-  .gitignore
-```
+**`nib-agent-claude`** — wraps Claude Code CLI. Uses Claude's native tool use, structured output, and session management.
 
-Agent-specific files are created by the backend's scaffold operation. For example, the Claude backend adds `CLAUDE.md`, `TOOLS.md`, and `.claude/skills/`. The local backend adds `PROJECT.md`.
-
-## Data Model
-
-### book.yaml
-
-Two-document YAML stream. First document is front matter (title, author, contact info). Second document defines the chapter/scene sequence. This is the single source of truth for manuscript ordering.
-
-### Scene Files (scenes/*.md)
-
-Pure prose. No frontmatter, no metadata. Named by slug convention: `{pov-character}-{action}` for regular scenes, `{document-type}-{context}` for interludes.
-
-### Character Profiles (characters/*.yaml)
-
-Human-authored. One file per character with personality, relationships, background. Used by `profile talk` to ground AI character sessions.
-
-### StoryDB (storydb/*.csv)
-
-Machine-curated, human-approved relational data. Five tables:
-
-| File                     | Content                                                      |
-| ------------------------ | ------------------------------------------------------------ |
-| `scenes.csv`             | Per-scene metadata (POV, location, time, summary)            |
-| `facts.csv`              | Established narrative details (events, descriptions, states) |
-| `scene_characters.csv`   | Character appearances per scene                              |
-| `locations.csv`          | Canonical location details                                   |
-| `timeline.csv`           | Temporal sequence of events                                  |
-
-Populated by `nib continuity index`, which uses AI to extract structured data and presents each record for interactive accept/reject/edit review.
-
-### Project State (\.nib/state.json)
-
-Gitignored. Stores transient state like the current focus (working scene).
-
-## Build Pipeline
-
-```
-book.yaml
-  |
-  v
-binder.AssembleMarkdown     -- scenes -> numbered chapter .md files + metadata.yaml
-  |
-  v
-pandoc                      -- chapter files -> docx / pdf / epub
-  |
-  v
-build/my-novel.{docx,pdf,epub}
-```
-
-DOCX builds detect `pandoc-templates/bin/md2long.sh` for Shunn manuscript format, falling back to plain pandoc if not present. PDF uses xelatex with 12pt, double-spaced, 1-inch margins.
-
-## AI Integration
-
-### Agent Protocol
-
-Nib delegates all AI operations to external **agent backends** — standalone executables that communicate via JSON over stdin/stdout. This decouples nib from any specific AI provider.
-
-The active backend is resolved from: `NIB_AGENT` env var > `git config nib.agent` > default (`claude`). The name maps to an executable: `nib-agent-<name>` on PATH.
-
-Four operations:
-
-| Operation  | Mode        | Purpose                                      |
-| ---------- | ----------- | -------------------------------------------- |
-| `complete` | Pipe        | Send prompt, get text back                   |
-| `extract`  | Pipe        | Send prompt + JSON schema, get structured data |
-| `converse` | Interactive | Launch a TTY session with the model          |
-| `scaffold` | Pipe        | Write agent-specific project files           |
-
-All pipe responses use typed envelopes (`{"type": "success", "operation": "...", ...}` or `{"type": "error", "error": "..."}`).
-
-See `docs/agent-protocol.md` and `docs/agent-schemas.md` for the full specification.
-
-### Bundled Backends
-
-**`nib-agent-claude`** — wraps Claude Code CLI. Supports all four operations. Uses Claude's native tool use, structured output, and session management.
-
-**`nib-agent-local`** — targets OpenAI-compatible local inference servers (LM Studio, ollama, vLLM). Supports all four operations including tool calling via the OpenAI function calling API. Configurable via git config or env vars:
+**`nib-agent-local`** — targets OpenAI-compatible local inference servers (LM Studio, ollama, vLLM). Configurable via git config or env vars:
 
 ```
 nib.agents.local.endpoint    # default: http://localhost:1234/v1
@@ -209,44 +181,23 @@ nib.agents.local.model       # default: qwen3-30b-a3b
 nib.agents.local.no-think    # default: true (suppress reasoning tokens)
 ```
 
-Tested with Qwen3-30B, Qwen3-27B, and Nemotron-3-Nano.
+The agent protocol is MIT-licensed so third-party backends can be built without AGPL obligations. See `docs/agent-protocol.md` for the specification.
 
-### AI-Powered Features
-
-| Feature                  | Command        | What It Does                                     |
-| ------------------------ | -------------- | ------------------------------------------------ |
-| Continuity indexing      | `ct index`     | Extracts facts, characters, locations from scenes |
-| Continuity checking      | `ct check`     | Detects contradictions across scenes              |
-| Continuity Q&A           | `ct ask`       | Answers plain-English questions about the novel   |
-| Manuscript critique      | `ma critique`  | Structured multi-category scene/chapter review    |
-| Manuscript proof         | `ma proof`     | Line-level copy-editing (edits in place)          |
-| Voice consistency        | `ma voice`     | Checks character voice across sampled scenes      |
-| Character talk           | `pr talk`      | Interactive role-play as a character              |
-
-### Bundled Skills (Claude backend)
-
-Five skills are scaffolded into Claude-backed projects:
-
-| Skill              | Purpose                                              |
-| ------------------ | ---------------------------------------------------- |
-| `review-scene`     | Structured scene review with 1-5 ratings             |
-| `review-chapter`   | Structured chapter review with 1-5 ratings           |
-| `copy-edit`        | Line-level mechanical editing (edits in place)        |
-| `continuity-check` | Cross-scene contradiction detection                  |
-| `voice-check`      | Per-character voice consistency analysis              |
-
-## Building and Testing
+## Building
 
 ```
-task build              # build nib + both agent binaries
-task test               # verbose
-task test:short         # quiet
-task all                # fmt, vet, test, build
-task clean              # remove build artifacts
-task release VERSION=v1.0.0   # tag, cross-compile (4 platforms), create GitHub release
+task build                            # build nib + agent binaries
+task test                             # run all tests (verbose)
+task all                              # fmt, vet, test, build
 ```
 
-Tests use `testify` for assertions. Pandoc and git commands are tested via injected `CommandRunner` functions that capture arguments without invoking real binaries. Filesystem tests use `t.TempDir()` for isolation. Agent operations use injectable function fields in options structs.
+Releases are automated via [GoReleaser](https://goreleaser.com/). Push a version tag and GitHub Actions cross-compiles for macOS (ARM), Linux (ARM + x86), and Windows (x86), then creates a GitHub release:
+
+```
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+Tags with pre-release identifiers (e.g. `v1.0.0-rc1`) are automatically marked as pre-releases.
 
 ## License
 
