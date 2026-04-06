@@ -50,15 +50,26 @@ func TestBuildPDF(t *testing.T) {
 
 func TestBuildEPUB(t *testing.T) {
 	chapterFiles := []string{"build/001-chapter-one.md"}
-	cmd := BuildEPUB(mockRunner, "/project", "build", "my-novel", chapterFiles)
+	cmd, err := BuildEPUB(mockRunner, "/project", "build", "my-novel", chapterFiles)
+	assert.NoError(t, err)
 
 	args := cmd.Args
 	assert.Equal(t, "echo", args[0])
 	assert.Equal(t, "pandoc", args[1])
 	assert.Contains(t, args, "build/metadata.yaml")
 	assert.Contains(t, args, "--resource-path=build:/project")
+	assert.Contains(t, args, "--css")
 	assert.Contains(t, args, "-o")
 	assert.Contains(t, args, "build/my-novel.epub")
+
+	// Verify font embedding flags
+	fontFlags := 0
+	for _, arg := range args {
+		if len(arg) > 18 && arg[:18] == "--epub-embed-font=" {
+			fontFlags++
+		}
+	}
+	assert.Equal(t, 2, fontFlags, "should embed 2 font files (regular + italic)")
 }
 
 func TestParseFormat(t *testing.T) {

@@ -1,0 +1,81 @@
+@font-face {
+  font-family: "Literata";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("Literata.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Literata";
+  font-style: italic;
+  font-weight: 100 900;
+  src: url("Literata-Italic.ttf") format("truetype");
+}
+
+body {
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.1em;
+  line-height: 1.6;
+  margin: 1em;
+}
+
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  text-align: center;
+}
+
+h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+}
+
+h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-top: 1.2em;
+  margin-bottom: 0.3em;
+}
+
+p {
+  text-indent: 1.5em;
+  margin-top: 0;
+  margin-bottom: 0;
+  orphans: 2;
+  widows: 2;
+}
+
+/* First paragraph after a heading: no indent */
+h1 + p, h2 + p, h3 + p {
+  text-indent: 0;
+}
+
+/* Scene breaks */
+hr {
+  border: none;
+  text-align: center;
+  margin: 1.5em 0;
+}
+
+hr::after {
+  content: "* * *";
+  font-size: 0.9em;
+  letter-spacing: 0.5em;
+}
+
+blockquote {
+  font-style: italic;
+  margin: 1em 1.5em;
+}
+
+em {
+  font-style: italic;
+}
+
+strong {
+  font-weight: 700;
+}

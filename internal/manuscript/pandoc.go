@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/poiesic/nib/internal/manuscript/epub"
 )
 
 //go:embed filters/pdf.lua
@@ -96,16 +98,63 @@ func BuildPDF(runner CommandRunner, projectRoot, outputDir, projectName string, 
 	return runner("pandoc", args...), nil
 }
 
-// BuildEPUB builds an EPUB manuscript.
-func BuildEPUB(runner CommandRunner, projectRoot, outputDir, projectName string, chapterFiles []string) *exec.Cmd {
+// BuildEPUB builds an EPUB manuscript with embedded Literata fonts and stylesheet.
+func BuildEPUB(runner CommandRunner, projectRoot, outputDir, projectName string, chapterFiles []string) (*exec.Cmd, error) {
 	metadataFile := filepath.Join(outputDir, "metadata.yaml")
 	outputFile := filepath.Join(outputDir, fmt.Sprintf("%s.epub", projectName))
+
+	// Write embedded CSS
+	cssFile, err := os.CreateTemp("", "nib-epub-*.css")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp css: %w", err)
+	}
+	if _, err := cssFile.Write(epub.CSS); err != nil {
+		os.Remove(cssFile.Name())
+		return nil, fmt.Errorf("writing temp css: %w", err)
+	}
+	cssFile.Close()
+
+	// Write embedded fonts
+	fontFiles := []struct {
+		data []byte
+		name string
+	}{
+		{epub.FontRegular, "Literata.ttf"},
+		{epub.FontItalic, "Literata-Italic.ttf"},
+	}
+
+	var fontPaths []string
+	for _, f := range fontFiles {
+		tmpFile, err := os.CreateTemp("", "nib-epub-*.ttf")
+		if err != nil {
+			os.Remove(cssFile.Name())
+			for _, p := range fontPaths {
+				os.Remove(p)
+			}
+			return nil, fmt.Errorf("creating temp font %s: %w", f.name, err)
+		}
+		if _, err := tmpFile.Write(f.data); err != nil {
+			os.Remove(cssFile.Name())
+			os.Remove(tmpFile.Name())
+			for _, p := range fontPaths {
+				os.Remove(p)
+			}
+			return nil, fmt.Errorf("writing temp font %s: %w", f.name, err)
+		}
+		tmpFile.Close()
+		fontPaths = append(fontPaths, tmpFile.Name())
+	}
 
 	args := []string{metadataFile}
 	args = append(args, chapterFiles...)
 	args = append(args,
 		fmt.Sprintf("--resource-path=%s:%s", outputDir, projectRoot),
-		"-o", outputFile,
+		"--css", cssFile.Name(),
 	)
-	return runner("pandoc", args...)
+	for _, fp := range fontPaths {
+		args = append(args, "--epub-embed-font="+fp)
+	}
+	args = append(args, "-o", outputFile)
+
+	return runner("pandoc", args...), nil
 }
