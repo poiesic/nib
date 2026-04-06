@@ -97,12 +97,15 @@ func BuildPDF(runner CommandRunner, projectRoot, outputDir, projectName string, 
 }
 
 // BuildEPUB builds an EPUB manuscript.
-func BuildEPUB(runner CommandRunner, outputDir, projectName string, chapterFiles []string) *exec.Cmd {
+func BuildEPUB(runner CommandRunner, projectRoot, outputDir, projectName string, chapterFiles []string) *exec.Cmd {
 	metadataFile := filepath.Join(outputDir, "metadata.yaml")
 	outputFile := filepath.Join(outputDir, fmt.Sprintf("%s.epub", projectName))
 
 	args := []string{metadataFile}
 	args = append(args, chapterFiles...)
-	args = append(args, "-o", outputFile)
+	args = append(args,
+		fmt.Sprintf("--resource-path=%s:%s", outputDir, projectRoot),
+		"-o", outputFile,
+	)
 	return runner("pandoc", args...)
 }

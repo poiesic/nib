@@ -123,7 +123,7 @@ func buildCmd(format Format, runner CommandRunner, projectRoot, outputDir, proje
 	case FormatPDF:
 		return BuildPDF(runner, projectRoot, outputDir, projectName, chapterFiles)
 	case FormatEPUB:
-		return BuildEPUB(runner, outputDir, projectName, chapterFiles), nil
+		return BuildEPUB(runner, projectRoot, outputDir, projectName, chapterFiles), nil
 	default:
 		return nil, nil
 	}

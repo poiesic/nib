@@ -50,12 +50,13 @@ func TestBuildPDF(t *testing.T) {
 
 func TestBuildEPUB(t *testing.T) {
 	chapterFiles := []string{"build/001-chapter-one.md"}
-	cmd := BuildEPUB(mockRunner, "build", "my-novel", chapterFiles)
+	cmd := BuildEPUB(mockRunner, "/project", "build", "my-novel", chapterFiles)
 
 	args := cmd.Args
 	assert.Equal(t, "echo", args[0])
 	assert.Equal(t, "pandoc", args[1])
 	assert.Contains(t, args, "build/metadata.yaml")
+	assert.Contains(t, args, "--resource-path=build:/project")
 	assert.Contains(t, args, "-o")
 	assert.Contains(t, args, "build/my-novel.epub")
 }
