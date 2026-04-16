@@ -10,7 +10,8 @@ import (
 
 // CritiqueOptions configures a manuscript critique session.
 type CritiqueOptions struct {
-	Range string
+	Range  string
+	Effort agent.Effort
 }
 
 // Critique launches an interactive Claude Code session. When the range refers
@@ -38,9 +39,9 @@ func Critique(opts CritiqueOptions) error {
 	}
 
 	if isWholeChapters(spec) {
-		return agent.ChapterCritique(paths, projectRoot)
+		return agent.ChapterCritique(paths, projectRoot, opts.Effort)
 	}
-	return agent.SceneCritique(paths, projectRoot)
+	return agent.SceneCritique(paths, projectRoot, opts.Effort)
 }
 
 // isWholeChapters returns true if every ref in the spec is a whole-chapter
@@ -56,7 +57,8 @@ func isWholeChapters(spec RangeSpec) bool {
 
 // ProofOptions configures a manuscript proofing session.
 type ProofOptions struct {
-	Range string
+	Range  string
+	Effort agent.Effort
 }
 
 // Proof runs the copy-edit skill on the specified scenes and prints a summary.
@@ -82,9 +84,9 @@ func Proof(opts ProofOptions) error {
 
 	var text string
 	if isWholeChapters(spec) {
-		text, err = agent.ChapterProof(paths, projectRoot)
+		text, err = agent.ChapterProof(paths, projectRoot, opts.Effort)
 	} else {
-		text, err = agent.SceneProof(paths, projectRoot)
+		text, err = agent.SceneProof(paths, projectRoot, opts.Effort)
 	}
 	if err != nil {
 		return err

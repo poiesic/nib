@@ -10,8 +10,9 @@ import (
 
 // SearchOptions configures a manuscript search operation.
 type SearchOptions struct {
-	Range string
-	Query string
+	Range  string
+	Query  string
+	Effort agent.Effort
 }
 
 // Search runs a natural-language search across scenes in the given range.
@@ -38,7 +39,7 @@ func Search(opts SearchOptions) error {
 		return err
 	}
 
-	text, err := agent.ManuscriptSearch(opts.Query, paths, projectRoot)
+	text, err := agent.ManuscriptSearch(opts.Query, paths, projectRoot, opts.Effort)
 	if err != nil {
 		return err
 	}

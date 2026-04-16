@@ -24,9 +24,9 @@ Nib runs the agent binary as a subprocess:
 
 ### Pipe vs Interactive Mode
 
-**Pipe operations** (`scene-proof`, `chapter-proof`, `voice-check`, `continuity-check`, `continuity-ask`, `continuity-index`, `project-scaffold`) send the request as JSON on stdin and expect a JSON response on stdout.
+**Pipe operations** (`scene-proof`, `chapter-proof`, `voice-check`, `continuity-check`, `continuity-ask`, `continuity-index`, `manuscript-search`, `project-scaffold`) send the request as JSON on stdin and expect a JSON response on stdout.
 
-**Interactive operations** (`scene-critique`, `chapter-critique`, `character-talk`) need the terminal for user interaction. The request is written to a temporary file and its path is passed via the `NIB_AGENT_REQUEST_FILE` environment variable. The backend reads the request from this file (and deletes it), then uses stdin/stdout/stderr for the interactive session. No JSON response is expected.
+**Interactive operations** (`scene-critique`, `chapter-critique`, `manuscript-critique`, `character-talk`) need the terminal for user interaction. The request is written to a temporary file and its path is passed via the `NIB_AGENT_REQUEST_FILE` environment variable. The backend reads the request from this file (and deletes it), then uses stdin/stdout/stderr for the interactive session. No JSON response is expected.
 
 ## Request Format
 
@@ -43,7 +43,8 @@ Every operation sends a single JSON object:
   "context": "...",
   "schema": { ... },
   "session": { "id": "...", "resume": false, "new": false },
-  "project_name": "my-novel"
+  "project_name": "my-novel",
+  "effort": "high"
 }
 ```
 
@@ -63,6 +64,7 @@ All fields except `operation` are optional. Which fields are present depends on 
 | `schema` | object | JSON Schema for structured output (`continuity-index` only). |
 | `session` | object | Session management options for interactive operations. |
 | `project_name` | string | Project name for template substitution (`project-scaffold` only). |
+| `effort` | string | Reasoning effort for the request: `low`, `medium`, `high`, `xhigh`, or `max`. Backends MUST treat an empty value as `high` (nib's default). Backends map the level to whatever mechanism fits (CLI flag, thinking tokens, sampling temperature). Levels above `high` are for models that expose larger reasoning budgets; backends that have no additional capacity should treat `xhigh`/`max` as equivalent to `high`. |
 
 ## Response Format
 
@@ -134,6 +136,18 @@ Interactive editorial review of a chapter. The `paths` field contains all scenes
 **Request fields:** `paths`, `dir`
 **Response type:** interactive (no JSON response)
 **Used by:** `nib ma critique` (with whole-chapter refs)
+
+---
+
+### `manuscript-critique`
+
+Interactive editorial review of the complete manuscript as a single unified work. The `paths` field contains exactly one path: the absolute path to a pre-assembled single-file markdown copy of the whole book (nib writes this to `build/manuscript-full.md` before dispatching).
+
+Backends MUST NOT review the manuscript chapter-by-chapter and concatenate the results. The one-file payload is specifically designed to make the "let me review chapter 1, then chapter 2, ..." failure mode impossible. Read the file as one object and evaluate at book scale: overall arc, act structure, macro-pacing, thematic through-lines, character arcs across the full work, and structural problems that only reveal themselves at book scale.
+
+**Request fields:** `paths` (length 1), `dir`
+**Response type:** interactive (no JSON response)
+**Used by:** `nib ma critique-book`
 
 ---
 
@@ -209,6 +223,16 @@ Session persistence is backend-specific.
 
 ---
 
+### `manuscript-search`
+
+Natural-language search across a set of scene files. Return matching lines with file and line-number references.
+
+**Request fields:** `question` (the query), `paths`, `dir`
+**Response type:** text (list of matches or "No matches found.")
+**Used by:** `nib ma search`
+
+---
+
 ### `project-scaffold`
 
 Write agent-specific project files during `nib init`. Non-interactive.
@@ -246,7 +270,7 @@ The protocol defines **what** to do, not **how**. Each operation is a domain con
 
 - **Backends own prompt construction.** Nib sends structured data (file paths, character slugs, questions). The backend decides how to prompt its model.
 - **Backends own execution strategy.** Whether to use tools, streaming, multiple passes, or guided generation is the backend's decision.
-- **Backends own configuration.** Effort levels, temperature, model selection, and tool permissions are internal to the backend.
+- **Backends own most configuration.** Temperature, model selection, and tool permissions are internal to the backend. The one exception is `effort`, which is user-facing (exposed via `--effort` on nib commands) and therefore part of the request — backends must honor it.
 - **Swapping backends changes implementation, not behavior.** Every backend implements the same operations with the same semantic contract.
 
 ## Minimal Example

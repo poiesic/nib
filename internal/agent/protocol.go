@@ -1,20 +1,68 @@
 package agent
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// Effort identifies the thinking/reasoning budget a backend should allocate
+// to a request. Backends map this to whatever mechanism fits (CLI flags,
+// temperature, thinking tokens). The five levels are ordered from least to
+// most effort.
+type Effort string
+
+const (
+	EffortLow    Effort = "low"
+	EffortMedium Effort = "medium"
+	EffortHigh   Effort = "high"
+	EffortXHigh  Effort = "xhigh"
+	EffortMax    Effort = "max"
+)
+
+// DefaultEffort is the effort used when none is specified. Keep it at or
+// above High so nib produces quality output by default.
+const DefaultEffort = EffortHigh
+
+// AllEfforts returns every valid effort level in ascending order.
+func AllEfforts() []Effort {
+	return []Effort{EffortLow, EffortMedium, EffortHigh, EffortXHigh, EffortMax}
+}
+
+// BelowHigh reports whether e is lower than High. Used by the CLI to decide
+// whether to warn the user about reduced quality.
+func (e Effort) BelowHigh() bool {
+	return e == EffortLow || e == EffortMedium
+}
+
+// ValidateEffort parses a user-provided string into an Effort. An empty
+// string yields DefaultEffort. Unknown values produce an error whose message
+// lists the valid options.
+func ValidateEffort(s string) (Effort, error) {
+	if s == "" {
+		return DefaultEffort, nil
+	}
+	for _, e := range AllEfforts() {
+		if string(e) == s {
+			return e, nil
+		}
+	}
+	return "", fmt.Errorf("invalid effort %q: must be one of low, medium, high, xhigh, max", s)
+}
 
 // Operation identifies which agent capability is being invoked.
 type Operation string
 
 const (
-	OpSceneProof      Operation = "scene-proof"
-	OpChapterProof    Operation = "chapter-proof"
-	OpSceneCritique   Operation = "scene-critique"
-	OpChapterCritique Operation = "chapter-critique"
-	OpVoiceCheck      Operation = "voice-check"
-	OpContinuityCheck Operation = "continuity-check"
-	OpContinuityAsk   Operation = "continuity-ask"
-	OpContinuityIndex Operation = "continuity-index"
-	OpCharacterTalk   Operation = "character-talk"
+	OpSceneProof         Operation = "scene-proof"
+	OpChapterProof       Operation = "chapter-proof"
+	OpSceneCritique      Operation = "scene-critique"
+	OpChapterCritique    Operation = "chapter-critique"
+	OpManuscriptCritique Operation = "manuscript-critique"
+	OpVoiceCheck         Operation = "voice-check"
+	OpContinuityCheck    Operation = "continuity-check"
+	OpContinuityAsk      Operation = "continuity-ask"
+	OpContinuityIndex    Operation = "continuity-index"
+	OpCharacterTalk      Operation = "character-talk"
 	OpProjectScaffold    Operation = "project-scaffold"
 	OpManuscriptSearch   Operation = "manuscript-search"
 )
@@ -31,6 +79,7 @@ type Request struct {
 	Schema        json.RawMessage `json:"schema,omitempty"`
 	Session       *SessionOptions `json:"session,omitempty"`
 	ProjectName   string          `json:"project_name,omitempty"`
+	Effort        Effort          `json:"effort,omitempty"`
 }
 
 // SessionOptions controls session behavior for interactive operations.

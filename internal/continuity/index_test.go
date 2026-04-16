@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/poiesic/binder"
+	"github.com/poiesic/nib/internal/agent"
 	"github.com/poiesic/nib/internal/storydb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ import (
 // and increments a call counter.
 func mockExtractFn(result ExtractionResult, callCount *atomic.Int32) ExtractFunc {
 	data, _ := json.Marshal(result)
-	return func(prompt string, schema json.RawMessage, dir string) (json.RawMessage, error) {
+	return func(prompt string, schema json.RawMessage, dir string, effort agent.Effort) (json.RawMessage, error) {
 		if callCount != nil {
 			callCount.Add(1)
 		}

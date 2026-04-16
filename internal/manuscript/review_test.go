@@ -37,4 +37,3 @@ func TestIsWholeChapters(t *testing.T) {
 		})
 	}
 }
-

@@ -15,6 +15,7 @@ import (
 type VoiceOptions struct {
 	Characters []string
 	Thorough   bool // sample 60% instead of 30%
+	Effort     agent.Effort
 }
 
 // Voice checks character voice consistency across sampled scenes.
@@ -58,7 +59,7 @@ func Voice(opts VoiceOptions) error {
 		fmt.Fprintf(os.Stderr, "Checking %s: sampling %d of %d scenes\n",
 			slug, len(sampled), len(scenes))
 
-		text, err := agent.VoiceCheck(slug, paths, projectRoot)
+		text, err := agent.VoiceCheck(slug, paths, projectRoot, opts.Effort)
 		if err != nil {
 			return err
 		}

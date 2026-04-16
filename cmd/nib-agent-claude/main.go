@@ -26,6 +26,8 @@ func main() {
 		err = critique(req, "review-scene")
 	case agent.OpChapterCritique:
 		err = critique(req, "review-chapter")
+	case agent.OpManuscriptCritique:
+		err = critique(req, "review-manuscript")
 	case agent.OpVoiceCheck:
 		err = voiceCheck(req)
 	case agent.OpContinuityCheck:
@@ -48,34 +50,43 @@ func main() {
 	}
 }
 
+// effortFlag returns the effort value to pass to `claude --effort`. Falls back
+// to DefaultEffort when the caller did not populate Request.Effort.
+func effortFlag(req agent.Request) string {
+	if req.Effort == "" {
+		return string(agent.DefaultEffort)
+	}
+	return string(req.Effort)
+}
+
 func proof(req agent.Request) error {
 	prompt := fmt.Sprintf("/copy-edit %s", strings.Join(req.Paths, " "))
-	return runPipe(prompt, "medium", []string{"Read", "Edit"}, req.Operation)
+	return runPipe(prompt, effortFlag(req), []string{"Read", "Edit"}, req.Operation)
 }
 
 func critique(req agent.Request, skill string) error {
 	prompt := fmt.Sprintf("/%s %s", skill, strings.Join(req.Paths, " "))
-	return runInteractive(prompt, "high", nil)
+	return runInteractive(prompt, effortFlag(req), nil)
 }
 
 func voiceCheck(req agent.Request) error {
 	prompt := fmt.Sprintf("/voice-check %s %s", req.CharacterSlug, strings.Join(req.Paths, " "))
-	return runPipe(prompt, "high", []string{"Read"}, req.Operation)
+	return runPipe(prompt, effortFlag(req), []string{"Read"}, req.Operation)
 }
 
 func continuityCheck(req agent.Request) error {
 	prompt := fmt.Sprintf("/continuity-check %s", strings.Join(req.Paths, " "))
-	return runPipe(prompt, "high", []string{"Read", "Bash"}, req.Operation)
+	return runPipe(prompt, effortFlag(req), []string{"Read", "Bash"}, req.Operation)
 }
 
 func continuityAsk(req agent.Request) error {
 	prompt := buildAskPrompt(req.Question, req.Range)
-	return runPipe(prompt, "high", []string{"Read", "Bash"}, req.Operation)
+	return runPipe(prompt, effortFlag(req), []string{"Read", "Bash"}, req.Operation)
 }
 
 func manuscriptSearch(req agent.Request) error {
 	prompt := buildSearchPrompt(req.Question, req.Paths)
-	return runPipe(prompt, "high", []string{"Read"}, req.Operation)
+	return runPipe(prompt, effortFlag(req), []string{"Read"}, req.Operation)
 }
 
 func continuityIndex(req agent.Request) error {
@@ -84,7 +95,7 @@ func continuityIndex(req agent.Request) error {
 		"--output-format", "json",
 		"--json-schema", string(req.Schema),
 		"--no-session-persistence",
-		"--effort", "medium",
+		"--effort", effortFlag(req),
 		"--allowedTools", "Read",
 	}
 
@@ -128,9 +139,9 @@ func characterTalk(req agent.Request) error {
 	}
 
 	if req.Session != nil && req.Session.Resume {
-		return runInteractive("", "", req.Session)
+		return runInteractive("", effortFlag(req), req.Session)
 	}
-	return runInteractive(req.Context, "", req.Session)
+	return runInteractive(req.Context, effortFlag(req), req.Session)
 }
 
 // runPipe invokes claude in non-interactive pipe mode and writes a CompleteResponse to stdout.

@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/poiesic/nib/internal/agent"
 	"github.com/poiesic/nib/internal/bookio"
 	"github.com/poiesic/nib/internal/chapter"
 	"github.com/poiesic/nib/internal/character"
@@ -18,6 +20,31 @@ import (
 	"github.com/poiesic/nib/internal/version"
 	"github.com/urfave/cli/v3"
 )
+
+// effortFlag returns the shared --effort cli.Flag definition.
+func effortFlag() cli.Flag {
+	return &cli.StringFlag{
+		Name:  "effort",
+		Usage: "agent reasoning effort: low, medium, high, xhigh, max (default high)",
+	}
+}
+
+// resolveEffort parses --effort, validates it, and warns on stderr when the
+// user has opted into a level below high.
+func resolveEffort(cmd *cli.Command) (agent.Effort, error) {
+	return resolveEffortValue(cmd.String("effort"), os.Stderr)
+}
+
+func resolveEffortValue(raw string, warnTo io.Writer) (agent.Effort, error) {
+	e, err := agent.ValidateEffort(raw)
+	if err != nil {
+		return "", err
+	}
+	if raw != "" && e.BelowHigh() && warnTo != nil {
+		fmt.Fprintf(warnTo, "warning: effort level %q may produce lower-quality results; \"high\" or above is recommended\n", raw)
+	}
+	return e, nil
+}
 
 func main() {
 	app := &cli.Command{
@@ -322,17 +349,23 @@ func profileCommand() *cli.Command {
 						Name:  "new",
 						Usage: "delete existing session and start fresh",
 					},
+					effortFlag(),
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() != 2 {
 						return fmt.Errorf("usage: nib profile talk [--resume|--new] <slug> <scene>\n\nExamples:\n  nib pr talk lance-thurgood 37.2\n  nib pr ta --resume lance-thurgood 37.2\n  nib pr ta --new lance-thurgood 37.2")
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return character.Talk(character.TalkOptions{
 						Slug:   args.Get(0),
 						Scene:  args.Get(1),
 						Resume: cmd.Bool("resume"),
 						New:    cmd.Bool("new"),
+						Effort: effort,
 					})
 				},
 			},
@@ -637,13 +670,21 @@ func continuityCommand() *cli.Command {
 				Aliases:   []string{"ck"},
 				Usage:     "check scenes for continuity errors",
 				ArgsUsage: "<range>",
+				Flags: []cli.Flag{
+					effortFlag(),
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() != 1 {
 						return fmt.Errorf("usage: nib continuity check <range>\n\nExamples:\n  nib ct check 3.2       # check a single scene\n  nib ct check 1-3       # check all scenes in chapters 1-3\n  nib ct check 1,3,5     # check all scenes in chapters 1, 3, and 5")
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return continuity.Check(continuity.CheckOptions{
-						Range: args.First(),
+						Range:  args.First(),
+						Effort: effort,
 					})
 				},
 			},
@@ -663,6 +704,7 @@ func continuityCommand() *cli.Command {
 						Aliases: []string{"f"},
 						Usage:   "re-index even if scene file hasn't changed",
 					},
+					effortFlag(),
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
@@ -673,10 +715,15 @@ func continuityCommand() *cli.Command {
 					if args.Len() == 1 {
 						rangeArg = args.First()
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return continuity.Index(continuity.IndexOptions{
 						Range:   rangeArg,
 						Verbose: cmd.Bool("verbose"),
 						Force:   cmd.Bool("force"),
+						Effort:  effort,
 					})
 				},
 			},
@@ -747,6 +794,7 @@ func continuityCommand() *cli.Command {
 						Name:  "range",
 						Usage: "limit search to a chapter/scene range (e.g. 1-10, 3.1-5.2)",
 					},
+					effortFlag(),
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
@@ -754,9 +802,14 @@ func continuityCommand() *cli.Command {
 						return fmt.Errorf("usage: nib ct ask \"your question here\"")
 					}
 					question := strings.Join(args.Slice(), " ")
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return continuity.Ask(continuity.AskOptions{
 						Question: question,
 						Range:    cmd.String("range"),
+						Effort:   effort,
 					})
 				},
 			},
@@ -835,15 +888,23 @@ func manuscriptCommand() *cli.Command {
 				Aliases:   []string{"se"},
 				Usage:     "search scenes with a plain-English query (e.g. 1-3, 1.1-2.3, 1,2,4)",
 				ArgsUsage: "<range> <query>",
+				Flags: []cli.Flag{
+					effortFlag(),
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() < 2 {
 						return fmt.Errorf("usage: nib manuscript search <range> \"<query>\"\n\nExamples:\n  nib ma search 1-41 \"body words near emotion verbs\"\n  nib ma se 1.1-5.3 \"dialogue where characters lie\"")
 					}
 					query := strings.Join(args.Slice()[1:], " ")
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return manuscript.Search(manuscript.SearchOptions{
-						Range: args.First(),
-						Query: query,
+						Range:  args.First(),
+						Query:  query,
+						Effort: effort,
 					})
 				},
 			},
@@ -852,13 +913,41 @@ func manuscriptCommand() *cli.Command {
 				Aliases:   []string{"cr"},
 				Usage:     "review scenes with Claude Code (e.g. 1-3, 1.1-2.3, 1,2,4)",
 				ArgsUsage: "<range>",
+				Flags: []cli.Flag{
+					effortFlag(),
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() != 1 {
 						return fmt.Errorf("usage: nib manuscript critique <range>\n\nExamples:\n  nib ma critique 1-3       # all scenes in chapters 1-3\n  nib ma critique 1.1-2.3   # chapter 1 scene 1 through chapter 2 scene 3\n  nib ma critique 1,3,5     # all scenes in chapters 1, 3, and 5\n  nib ma critique 2.1,2.3   # specific scenes by dotted notation")
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return manuscript.Critique(manuscript.CritiqueOptions{
-						Range: args.First(),
+						Range:  args.First(),
+						Effort: effort,
+					})
+				},
+			},
+			{
+				Name:    "critique-book",
+				Aliases: []string{"cb"},
+				Usage:   "review the entire assembled manuscript as one work",
+				Flags: []cli.Flag{
+					effortFlag(),
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					if cmd.Args().Len() != 0 {
+						return fmt.Errorf("usage: nib manuscript critique-book\n\nAssembles the full manuscript and launches an interactive book-scope review.")
+					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
+					return manuscript.CritiqueBook(manuscript.CritiqueBookOptions{
+						Effort: effort,
 					})
 				},
 			},
@@ -867,13 +956,21 @@ func manuscriptCommand() *cli.Command {
 				Aliases:   []string{"pr"},
 				Usage:     "copy-edit scenes with Claude Code (e.g. 1-3, 1.1-2.3, 1,2,4)",
 				ArgsUsage: "<range>",
+				Flags: []cli.Flag{
+					effortFlag(),
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() != 1 {
 						return fmt.Errorf("usage: nib manuscript proof <range>\n\nExamples:\n  nib ma proof 1-3       # all scenes in chapters 1-3\n  nib ma proof 1.1-2.3   # chapter 1 scene 1 through chapter 2 scene 3\n  nib ma proof 1,3,5     # all scenes in chapters 1, 3, and 5\n  nib ma proof 2.1,2.3   # specific scenes by dotted notation")
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return manuscript.Proof(manuscript.ProofOptions{
-						Range: args.First(),
+						Range:  args.First(),
+						Effort: effort,
 					})
 				},
 			},
@@ -887,15 +984,21 @@ func manuscriptCommand() *cli.Command {
 						Name:  "thorough",
 						Usage: "sample 60% of scenes instead of 30% for higher confidence",
 					},
+					effortFlag(),
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
 					if args.Len() == 0 {
 						return fmt.Errorf("usage: nib manuscript voice [--thorough] <character> [character...]\n\nExamples:\n  nib ma voice lance-thurgood\n  nib ma vo --thorough lance-thurgood bo-dupuis")
 					}
+					effort, err := resolveEffort(cmd)
+					if err != nil {
+						return err
+					}
 					return manuscript.Voice(manuscript.VoiceOptions{
 						Characters: args.Slice(),
 						Thorough:   cmd.Bool("thorough"),
+						Effort:     effort,
 					})
 				},
 			},

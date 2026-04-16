@@ -35,52 +35,66 @@ func binaryName(agent string) string {
 type CharacterTalkOptions struct {
 	Session *SessionOptions
 	Context string
+	Effort  Effort
+}
+
+// resolveEffort returns e unchanged if non-empty, otherwise DefaultEffort.
+func resolveEffort(e Effort) Effort {
+	if e == "" {
+		return DefaultEffort
+	}
+	return e
 }
 
 // SceneProof runs mechanical proofreading on the specified scene files.
-func SceneProof(paths []string, dir string) (string, error) {
+func SceneProof(paths []string, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation: OpSceneProof,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // ChapterProof runs mechanical proofreading on the specified chapter files.
-func ChapterProof(paths []string, dir string) (string, error) {
+func ChapterProof(paths []string, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation: OpChapterProof,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // VoiceCheck checks character voice consistency across sampled scenes.
-func VoiceCheck(slug string, paths []string, dir string) (string, error) {
+func VoiceCheck(slug string, paths []string, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation:     OpVoiceCheck,
 		CharacterSlug: slug,
 		Paths:         paths,
 		Dir:           dir,
+		Effort:        resolveEffort(effort),
 	})
 }
 
 // ContinuityCheck runs continuity error detection on the specified scenes.
-func ContinuityCheck(paths []string, dir string) (string, error) {
+func ContinuityCheck(paths []string, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation: OpContinuityCheck,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // ContinuityIndex extracts structured continuity data from a scene.
-func ContinuityIndex(prompt string, schema json.RawMessage, dir string) (json.RawMessage, error) {
+func ContinuityIndex(prompt string, schema json.RawMessage, dir string, effort Effort) (json.RawMessage, error) {
 	req := Request{
 		Operation: OpContinuityIndex,
 		Context:   prompt,
 		Schema:    schema,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	}
 	stdout, err := dispatch(req)
 	if err != nil {
@@ -97,40 +111,57 @@ func ContinuityIndex(prompt string, schema json.RawMessage, dir string) (json.Ra
 }
 
 // ContinuityAsk sends a research question about the manuscript.
-func ContinuityAsk(question, rangeExpr, dir string) (string, error) {
+func ContinuityAsk(question, rangeExpr, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation: OpContinuityAsk,
 		Question:  question,
 		Range:     rangeExpr,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // ManuscriptSearch runs a natural-language search across the specified scenes.
-func ManuscriptSearch(query string, paths []string, dir string) (string, error) {
+func ManuscriptSearch(query string, paths []string, dir string, effort Effort) (string, error) {
 	return completeOp(Request{
 		Operation: OpManuscriptSearch,
 		Question:  query,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // SceneCritique launches an interactive editorial review of a scene.
-func SceneCritique(paths []string, dir string) error {
+func SceneCritique(paths []string, dir string, effort Effort) error {
 	return interactiveOp(Request{
 		Operation: OpSceneCritique,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
 // ChapterCritique launches an interactive editorial review of a chapter.
-func ChapterCritique(paths []string, dir string) error {
+func ChapterCritique(paths []string, dir string, effort Effort) error {
 	return interactiveOp(Request{
 		Operation: OpChapterCritique,
 		Paths:     paths,
 		Dir:       dir,
+		Effort:    resolveEffort(effort),
+	})
+}
+
+// ManuscriptCritique launches an interactive editorial review of the complete
+// manuscript. The paths slice should contain a single path to an assembled
+// full-manuscript file so the backend can read the book as one unit rather
+// than stitching chapters together after the fact.
+func ManuscriptCritique(paths []string, dir string, effort Effort) error {
+	return interactiveOp(Request{
+		Operation: OpManuscriptCritique,
+		Paths:     paths,
+		Dir:       dir,
+		Effort:    resolveEffort(effort),
 	})
 }
 
@@ -141,6 +172,7 @@ func CharacterTalk(opts CharacterTalkOptions, dir string) error {
 		Context:   opts.Context,
 		Session:   opts.Session,
 		Dir:       dir,
+		Effort:    resolveEffort(opts.Effort),
 	})
 }
 

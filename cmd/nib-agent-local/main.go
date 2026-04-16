@@ -24,6 +24,8 @@ func main() {
 		err = sceneCritique(req)
 	case agent.OpChapterCritique:
 		err = chapterCritique(req)
+	case agent.OpManuscriptCritique:
+		err = manuscriptCritique(req)
 	case agent.OpVoiceCheck:
 		err = voiceCheck(req)
 	case agent.OpContinuityCheck:
@@ -50,17 +52,28 @@ func proof(req agent.Request) error {
 		"Do NOT tighten prose, improve word choice, remove filter words, or restructure sentences. "+
 		"Edit the files directly, then print a brief summary of what you fixed.",
 		strings.Join(req.Paths, " "))
-	return completePipe(prompt, proofSystemPrompt, "medium", []string{"Read", "Edit"}, req.Operation)
+	return completePipe(prompt, proofSystemPrompt, req.Effort, []string{"Read", "Edit"}, req.Operation)
 }
 
 func sceneCritique(req agent.Request) error {
 	prompt := fmt.Sprintf("Review the following scene files: %s", strings.Join(req.Paths, " "))
-	return converseSession("high", prompt, critiqueSystemPrompt, nil)
+	return converseSession(req.Effort, prompt, critiqueSystemPrompt, nil)
 }
 
 func chapterCritique(req agent.Request) error {
 	prompt := fmt.Sprintf("Review the following chapter (all scenes in order): %s", strings.Join(req.Paths, " "))
-	return converseSession("high", prompt, critiqueSystemPrompt, nil)
+	return converseSession(req.Effort, prompt, critiqueSystemPrompt, nil)
+}
+
+func manuscriptCritique(req agent.Request) error {
+	prompt := fmt.Sprintf(
+		"Review the complete novel manuscript in the single file at %s as one unified work. "+
+			"Do NOT review it chapter-by-chapter and stitch the pieces together. "+
+			"Read the whole file, then evaluate the book as a single object: overall arc, "+
+			"macro-pacing across chapters, thematic through-lines, character arcs across the full work, "+
+			"and structural problems that only reveal themselves at book scale.",
+		strings.Join(req.Paths, " "))
+	return converseSession(req.Effort, prompt, critiqueSystemPrompt, nil)
 }
 
 func voiceCheck(req agent.Request) error {
@@ -68,7 +81,7 @@ func voiceCheck(req agent.Request) error {
 		"Read the character profile from characters/%s.yaml first, then read each scene. "+
 		"Report any places where the character's dialogue or POV narration doesn't match their established voice.",
 		req.CharacterSlug, strings.Join(req.Paths, " "), req.CharacterSlug)
-	return completePipe(prompt, systemPrompt, "high", []string{"Read"}, req.Operation)
+	return completePipe(prompt, systemPrompt, req.Effort, []string{"Read"}, req.Operation)
 }
 
 func continuityCheck(req agent.Request) error {
@@ -76,16 +89,16 @@ func continuityCheck(req agent.Request) error {
 		"Use `nib ct recap` to understand what has been established, then read the scenes. "+
 		"Report contradictions in facts, timelines, character knowledge, or physical details.",
 		strings.Join(req.Paths, " "))
-	return completePipe(prompt, systemPrompt, "high", []string{"Read", "Bash"}, req.Operation)
+	return completePipe(prompt, systemPrompt, req.Effort, []string{"Read", "Bash"}, req.Operation)
 }
 
 func continuityAsk(req agent.Request) error {
 	prompt := buildAskPrompt(req.Question, req.Range)
-	return completePipe(prompt, systemPrompt, "high", []string{"Read", "Bash"}, req.Operation)
+	return completePipe(prompt, systemPrompt, req.Effort, []string{"Read", "Bash"}, req.Operation)
 }
 
 func continuityIndex(req agent.Request) error {
-	cfg := loadConfig("medium")
+	cfg := loadConfig(req.Effort)
 	cfg.Temperature = 0.2
 
 	messages := []chatMessage{
@@ -128,11 +141,11 @@ func continuityIndex(req agent.Request) error {
 }
 
 func characterTalk(req agent.Request) error {
-	return converseSession("medium", req.Context, systemPrompt, req.Session)
+	return converseSession(req.Effort, req.Context, systemPrompt, req.Session)
 }
 
 // completePipe runs a non-interactive completion and writes a CompleteResponse to stdout.
-func completePipe(prompt, sysPrompt, effort string, toolNames []string, op agent.Operation) error {
+func completePipe(prompt, sysPrompt string, effort agent.Effort, toolNames []string, op agent.Operation) error {
 	cfg := loadConfig(effort)
 
 	messages := []chatMessage{

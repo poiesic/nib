@@ -15,7 +15,7 @@ import (
 )
 
 // converseSession runs an interactive chat session with the local model.
-func converseSession(effort, initialPrompt, sysPrompt string, session *agent.SessionOptions) error {
+func converseSession(effort agent.Effort, initialPrompt, sysPrompt string, session *agent.SessionOptions) error {
 	cfg := loadConfig(effort)
 
 	// Load or start conversation history

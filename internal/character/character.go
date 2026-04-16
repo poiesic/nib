@@ -173,6 +173,7 @@ type TalkOptions struct {
 	Scene  string // dotted notation (e.g. "37.2")
 	Resume bool   // resume an existing talk session
 	New    bool   // delete existing session and start fresh
+	Effort agent.Effort
 }
 
 // Talk launches an interactive agent session where the agent role-plays
@@ -198,7 +199,7 @@ func Talk(opts TalkOptions) error {
 
 	if opts.Resume {
 		fmt.Fprintln(os.Stderr, "Resuming conversation...")
-		return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session}, projectRoot)
+		return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session, Effort: opts.Effort}, projectRoot)
 	}
 
 	// Verify character exists and read profile
@@ -234,7 +235,7 @@ func Talk(opts TalkOptions) error {
 	prompt := buildTalkPrompt(name, opts.Scene, string(profileData), recapBuf.String(), recapErr)
 
 	fmt.Fprintf(os.Stderr, "Resume with: nib pr talk --resume %s %s\n\n", opts.Slug, opts.Scene)
-	return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session, Context: prompt}, projectRoot)
+	return agent.CharacterTalk(agent.CharacterTalkOptions{Session: session, Context: prompt, Effort: opts.Effort}, projectRoot)
 }
 
 func buildTalkPrompt(name, sceneRef, profile, recap string, recapErr error) string {

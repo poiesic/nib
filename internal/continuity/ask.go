@@ -13,7 +13,8 @@ import (
 
 // CheckOptions configures the continuity check operation.
 type CheckOptions struct {
-	Range string
+	Range  string
+	Effort agent.Effort
 }
 
 // Check runs the continuity-check skill on the specified scenes and prints findings.
@@ -37,7 +38,7 @@ func Check(opts CheckOptions) error {
 		return err
 	}
 
-	text, err := agent.ContinuityCheck(paths, projectRoot)
+	text, err := agent.ContinuityCheck(paths, projectRoot, opts.Effort)
 	if err != nil {
 		return err
 	}
@@ -51,6 +52,7 @@ type AskOptions struct {
 	Question string
 	Range    string    // optional range to scope context
 	Stdout   io.Writer // nil = os.Stdout
+	Effort   agent.Effort
 }
 
 // Ask sends a plain-English question about the novel to the agent and prints the answer.
@@ -69,7 +71,7 @@ func Ask(opts AskOptions) error {
 		return err
 	}
 
-	text, err := agent.ContinuityAsk(opts.Question, opts.Range, projectRoot)
+	text, err := agent.ContinuityAsk(opts.Question, opts.Range, projectRoot, opts.Effort)
 	if err != nil {
 		return err
 	}
