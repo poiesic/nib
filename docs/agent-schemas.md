@@ -73,7 +73,7 @@ Companion to [agent-protocol.md](agent-protocol.md). These schemas can be used t
 
 ## Responses
 
-Pipe operations return one of two shapes: success or error. Interactive operations (`scene-critique`, `chapter-critique`, `character-talk`) do not return JSON.
+Pipe operations return one of two shapes: success or error. Interactive operations (`scene-critique`, `chapter-critique`, `manuscript-critique`, `character-talk`) do not return JSON.
 
 ### Error Response
 

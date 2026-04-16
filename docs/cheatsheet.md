@@ -87,6 +87,7 @@ nib ma build epub             # build EPUB
 ```bash
 nib ma critique 3.2           # interactive critique of a scene
 nib ma critique 1-5           # critique chapters 1-5 (one session per chapter)
+nib ma critique               # critique the whole manuscript
 nib ma proof 3.2              # copy-edit a scene (edits in place)
 nib ma proof 1-3              # copy-edit a range
 nib ma voice lance-thurgood   # check voice consistency (~30% of scenes)

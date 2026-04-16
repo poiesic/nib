@@ -147,7 +147,7 @@ Backends MUST NOT review the manuscript chapter-by-chapter and concatenate the r
 
 **Request fields:** `paths` (length 1), `dir`
 **Response type:** interactive (no JSON response)
-**Used by:** `nib ma critique-book`
+**Used by:** `nib ma critique` (no range argument)
 
 ---
 

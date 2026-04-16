@@ -911,42 +911,27 @@ func manuscriptCommand() *cli.Command {
 			{
 				Name:      "critique",
 				Aliases:   []string{"cr"},
-				Usage:     "review scenes with Claude Code (e.g. 1-3, 1.1-2.3, 1,2,4)",
-				ArgsUsage: "<range>",
+				Usage:     "review the whole manuscript, or a range of scenes (e.g. 1-3, 1.1-2.3, 1,2,4)",
+				ArgsUsage: "[range]",
 				Flags: []cli.Flag{
 					effortFlag(),
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					args := cmd.Args()
-					if args.Len() != 1 {
-						return fmt.Errorf("usage: nib manuscript critique <range>\n\nExamples:\n  nib ma critique 1-3       # all scenes in chapters 1-3\n  nib ma critique 1.1-2.3   # chapter 1 scene 1 through chapter 2 scene 3\n  nib ma critique 1,3,5     # all scenes in chapters 1, 3, and 5\n  nib ma critique 2.1,2.3   # specific scenes by dotted notation")
+					if args.Len() > 1 {
+						return fmt.Errorf("usage: nib manuscript critique [range]\n\nExamples:\n  nib ma critique             # review the entire assembled manuscript\n  nib ma critique 1-3         # all scenes in chapters 1-3\n  nib ma critique 1.1-2.3     # chapter 1 scene 1 through chapter 2 scene 3\n  nib ma critique 1,3,5       # all scenes in chapters 1, 3, and 5\n  nib ma critique 2.1,2.3     # specific scenes by dotted notation")
 					}
 					effort, err := resolveEffort(cmd)
 					if err != nil {
 						return err
+					}
+					if args.Len() == 0 {
+						return manuscript.CritiqueBook(manuscript.CritiqueBookOptions{
+							Effort: effort,
+						})
 					}
 					return manuscript.Critique(manuscript.CritiqueOptions{
 						Range:  args.First(),
-						Effort: effort,
-					})
-				},
-			},
-			{
-				Name:    "critique-book",
-				Aliases: []string{"cb"},
-				Usage:   "review the entire assembled manuscript as one work",
-				Flags: []cli.Flag{
-					effortFlag(),
-				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					if cmd.Args().Len() != 0 {
-						return fmt.Errorf("usage: nib manuscript critique-book\n\nAssembles the full manuscript and launches an interactive book-scope review.")
-					}
-					effort, err := resolveEffort(cmd)
-					if err != nil {
-						return err
-					}
-					return manuscript.CritiqueBook(manuscript.CritiqueBookOptions{
 						Effort: effort,
 					})
 				},

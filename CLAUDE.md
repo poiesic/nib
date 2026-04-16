@@ -36,6 +36,7 @@ Nib delegates AI operations to swappable agent backends via a domain-operation p
 | `chapter-proof` | pipe (text) | Mechanical proofreading at chapter scope |
 | `scene-critique` | interactive | Editorial review of a scene |
 | `chapter-critique` | interactive | Editorial review of a chapter |
+| `manuscript-critique` | interactive | Editorial review of the whole manuscript |
 | `voice-check` | pipe (text) | Character voice consistency analysis |
 | `continuity-check` | pipe (text) | Continuity error detection |
 | `continuity-ask` | pipe (text) | Research question about the manuscript |
